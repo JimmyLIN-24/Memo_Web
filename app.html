@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>物品清单备忘录</title>
+    
+    <!-- PWA支持 -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ff6b9d">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="备忘录">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <div class="user-info">
+                        <div class="user-avatar-small">👧🏻</div>
+                        <div class="user-details">
+                            <span class="user-name">小香香Grace</span>
+                            <span class="user-status">在线</span>
+                        </div>
+                    </div>
+                    <h1 class="app-title">
+                        <i class="fas fa-clipboard-list"></i>
+                        物品清单备忘录
+                    </h1>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-primary" id="addItemBtn">
+                        <i class="fas fa-plus"></i>
+                        添加物品
+                    </button>
+                    <button class="btn btn-secondary" id="settingsBtn">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Notification Area (Fixed at top) -->
+        <div class="notifications-container" id="notificationsContainer">
+            <!-- Individual notification items will be added here -->
+        </div>
+
+        <div class="main-layout">
+            <!-- Left Sidebar Navigation -->
+            <aside class="sidebar">
+                <nav class="sidebar-nav">
+                    <div class="nav-section">
+                        <h3 class="nav-title">食品类</h3>
+                        <button class="nav-btn active" data-category="food-fresh">
+                            <i class="fas fa-leaf"></i>
+                            <span>新鲜食品</span>
+                        </button>
+                        <button class="nav-btn" data-category="food-packaged">
+                            <i class="fas fa-box"></i>
+                            <span>包装食品</span>
+                        </button>
+                        <button class="nav-btn" data-category="food-frozen">
+                            <i class="fas fa-snowflake"></i>
+                            <span>冷冻食品</span>
+                        </button>
+                        <button class="nav-btn" data-category="food-drinks">
+                            <i class="fas fa-coffee"></i>
+                            <span>饮品</span>
+                        </button>
+                    </div>
+                    
+                    <div class="nav-section">
+                        <h3 class="nav-title">个人护理</h3>
+                        <button class="nav-btn" data-category="skincare">
+                            <i class="fas fa-spa"></i>
+                            <span>护肤品</span>
+                        </button>
+                        <button class="nav-btn" data-category="cosmetics">
+                            <i class="fas fa-palette"></i>
+                            <span>化妆品</span>
+                        </button>
+                        <button class="nav-btn" data-category="hygiene">
+                            <i class="fas fa-pump-soap"></i>
+                            <span>清洁用品</span>
+                        </button>
+                    </div>
+                    
+                    <div class="nav-section">
+                        <h3 class="nav-title">生活用品</h3>
+                        <button class="nav-btn" data-category="daily-necessities">
+                            <i class="fas fa-home"></i>
+                            <span>日常必需</span>
+                        </button>
+                        <button class="nav-btn" data-category="cleaning">
+                            <i class="fas fa-spray-can"></i>
+                            <span>清洁用品</span>
+                        </button>
+                        <button class="nav-btn" data-category="paper-products">
+                            <i class="fas fa-toilet-paper"></i>
+                            <span>纸制品</span>
+                        </button>
+                        <button class="nav-btn" data-category="medicine">
+                            <i class="fas fa-pills"></i>
+                            <span>药品保健</span>
+                        </button>
+                    </div>
+                    
+                    <div class="nav-section">
+                        <h3 class="nav-title">其他</h3>
+                        <button class="nav-btn" data-category="electronics">
+                            <i class="fas fa-plug"></i>
+                            <span>电子用品</span>
+                        </button>
+                        <button class="nav-btn" data-category="stationery">
+                            <i class="fas fa-pen"></i>
+                            <span>文具用品</span>
+                        </button>
+                        <button class="nav-btn" data-category="others">
+                            <i class="fas fa-question"></i>
+                            <span>其他物品</span>
+                        </button>
+                    </div>
+                </nav>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="main-content">
+                <!-- Notification Banner -->
+                <div class="notification-banner" id="notificationBanner" style="display: none;">
+                    <div class="notification-content">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span id="notificationText"></span>
+                        <button class="notification-close" id="closeNotification">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Category Content -->
+                <div class="category-content">
+                    <div class="category-header">
+                        <h2 id="categoryTitle">新鲜食品</h2>
+                        <div class="category-stats">
+                            <span class="stat-item">
+                                <i class="fas fa-boxes"></i>
+                                总计：<span id="totalItems">0</span>
+                            </span>
+                            <span class="stat-item alert">
+                                <i class="fas fa-exclamation-circle"></i>
+                                需要关注：<span id="alertItems">0</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Items Grid -->
+                    <div class="items-grid" id="itemsGrid">
+                        <!-- Items will be dynamically loaded here -->
+                    </div>
+
+                    <!-- Empty State -->
+                    <div class="empty-state" id="emptyState">
+                        <div class="empty-illustration">
+                            <i class="fas fa-box-open"></i>
+                        </div>
+                        <h3>暂无物品</h3>
+                        <p>点击上方的"添加物品"按钮开始记录您的清单</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Add/Edit Item Modal -->
+        <div class="modal-overlay" id="itemModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="modalTitle">添加物品</h3>
+                    <button class="modal-close" id="closeModal">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <form class="modal-form" id="itemForm">
+                    <!-- Quick Select Section -->
+                    <div class="quick-select-section" id="quickSelectSection">
+                        <h4>快速选择常用物品</h4>
+                        <div class="quick-select-grid" id="quickSelectGrid">
+                            <!-- Quick select items will be loaded here -->
+                        </div>
+                        <div class="quick-select-divider">
+                            <span>或手动输入</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="itemName">物品名称</label>
+                        <input type="text" id="itemName" required placeholder="请输入物品名称">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="itemQuantity">数量</label>
+                            <input type="number" id="itemQuantity" required min="0" placeholder="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="itemUnit">单位</label>
+                            <input type="text" id="itemUnit" placeholder="包/个/瓶">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="itemExpiry">保质期</label>
+                        <input type="date" id="itemExpiry" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="itemThreshold">库存提醒阈值</label>
+                        <input type="number" id="itemThreshold" min="0" placeholder="低于此数量时提醒">
+                    </div>
+                    <div class="form-group">
+                        <label for="itemCategory">分类</label>
+                        <select id="itemCategory" required>
+                            <optgroup label="食品类">
+                                <option value="food-fresh">新鲜食品</option>
+                                <option value="food-packaged">包装食品</option>
+                                <option value="food-frozen">冷冻食品</option>
+                                <option value="food-drinks">饮品</option>
+                            </optgroup>
+                            <optgroup label="个人护理">
+                                <option value="skincare">护肤品</option>
+                                <option value="cosmetics">化妆品</option>
+                                <option value="hygiene">清洁用品</option>
+                            </optgroup>
+                            <optgroup label="生活用品">
+                                <option value="daily-necessities">日常必需</option>
+                                <option value="cleaning">清洁用品</option>
+                                <option value="paper-products">纸制品</option>
+                                <option value="medicine">药品保健</option>
+                            </optgroup>
+                            <optgroup label="其他">
+                                <option value="electronics">电子用品</option>
+                                <option value="stationery">文具用品</option>
+                                <option value="others">其他物品</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="cancelBtn">取消</button>
+                        <button type="submit" class="btn btn-primary" id="saveBtn">保存</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div class="modal-overlay" id="settingsModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>设置</h3>
+                    <button class="modal-close" id="closeSettingsModal">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="settings-content">
+                    <div class="setting-item">
+                        <label for="defaultThreshold">默认库存提醒阈值</label>
+                        <input type="number" id="defaultThreshold" min="0" value="5">
+                    </div>
+                    <div class="setting-item">
+                        <label for="expiryWarningDays">保质期提醒天数</label>
+                        <input type="number" id="expiryWarningDays" min="0" value="7">
+                        <span class="setting-help">提前多少天提醒保质期即将到期</span>
+                    </div>
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="enableNotifications" checked>
+                            启用提醒通知
+                        </label>
+                    </div>
+                    <div class="setting-actions">
+                        <button class="btn btn-secondary" id="resetSettings">重置设置</button>
+                        <button class="btn btn-primary" id="saveSettings">保存设置</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 
