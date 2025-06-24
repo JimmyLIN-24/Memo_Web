@@ -26,6 +26,7 @@
     
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="auth.css">
     <style>
         * {
             margin: 0;
@@ -356,6 +357,14 @@
             <i class="fas fa-heart"></i>
             进入我的清单世界
         </button>
+        
+        <!-- 添加直接进入应用的选项 -->
+        <div style="margin-top: 1rem;">
+            <button class="enter-button" onclick="window.location.href='app.html'" style="background: linear-gradient(135deg, #667eea, #764ba2); font-size: 0.9rem; padding: 0.8rem 2rem;">
+                <i class="fas fa-list"></i>
+                直接进入应用
+            </button>
+        </div>
 
         <div class="feature-icons">
             <div class="feature-icon">📱</div>
@@ -364,6 +373,7 @@
         </div>
     </div>
 
+    <script src="auth.js"></script>
     <script>
         function enterApp() {
             // 添加进入动画效果
