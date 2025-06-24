@@ -282,6 +282,73 @@ const itemForm = document.getElementById('itemForm');
 const quickSelectGrid = document.getElementById('quickSelectGrid');
 const navButtons = document.querySelectorAll('.nav-btn');
 
+// PWA版本管理
+const APP_VERSION = '1.2.0';
+const CACHE_BUST_PARAM = `?v=${APP_VERSION}&t=${Date.now()}`;
+
+// 检查并显示版本信息
+function initVersionInfo() {
+    // 在页面底部显示版本信息
+    const versionDiv = document.createElement('div');
+    versionDiv.style.cssText = `
+        position: fixed;
+        bottom: 10px;
+        left: 10px;
+        background: rgba(0,0,0,0.1);
+        color: #666;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        z-index: 1000;
+        cursor: pointer;
+    `;
+    versionDiv.textContent = `v${APP_VERSION}`;
+    versionDiv.title = '点击检查更新';
+    versionDiv.onclick = checkForUpdates;
+    document.body.appendChild(versionDiv);
+}
+
+// 检查更新功能
+function checkForUpdates() {
+    if (confirm('检查应用更新？\n\n这将重新加载应用并获取最新内容。')) {
+        // 添加缓存破坏参数强制重新加载
+        window.location.href = window.location.href.split('?')[0] + CACHE_BUST_PARAM;
+    }
+}
+
+// iOS PWA检测
+function isIOSPWA() {
+    return window.navigator.standalone === true;
+}
+
+// iOS Safari添加到主屏幕提示
+function showIOSInstallPrompt() {
+    // 检查是否为iOS设备且不是PWA模式
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isNotPWA = window.navigator.standalone !== true;
+    
+    if (isIOS && isNotPWA && !localStorage.getItem('ios-install-prompted')) {
+        setTimeout(() => {
+            const shouldPrompt = confirm(
+                '📱 添加到主屏幕\n\n' +
+                '为了获得最佳体验，建议将此应用添加到主屏幕！\n\n' +
+                '操作步骤：\n' +
+                '1. 点击底部分享按钮 📤\n' +
+                '2. 选择"添加到主屏幕" ➕\n' +
+                '3. 点击"添加"完成安装\n\n' +
+                '是否查看详细安装指南？'
+            );
+            
+            if (shouldPrompt) {
+                // 可以跳转到安装指南页面
+                alert('请按照以下步骤操作：\n\n1. 点击Safari底部的分享按钮\n2. 向下滚动找到"添加到主屏幕"\n3. 点击添加完成安装');
+            }
+            
+            localStorage.setItem('ios-install-prompted', 'true');
+        }, 3000); // 3秒后显示提示
+    }
+}
+
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
     loadCurrentCategory();
@@ -293,6 +360,16 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
         notificationManager.checkAndShowNotifications();
     }, 500);
+
+    initVersionInfo();
+    
+    // 如果是iOS设备，显示安装提示
+    showIOSInstallPrompt();
+    
+    // 如果是PWA模式，显示欢迎信息
+    if (isIOSPWA()) {
+        console.log('🎉 PWA模式运行中');
+    }
 });
 
 function setupEventListeners() {

@@ -6,8 +6,8 @@
   "background_color": "#ffeef7",
   "display": "standalone",
   "orientation": "portrait",
-  "scope": "/",
-  "start_url": "/",
+  "scope": "/Memo_Web/",
+  "start_url": "/Memo_Web/index.html",
   "categories": ["lifestyle", "productivity"],
   "lang": "zh-CN",
   "icons": [
