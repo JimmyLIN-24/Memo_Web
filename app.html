@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>物品清单备忘录</title>
     
     <!-- PWA支持 -->
@@ -60,9 +60,27 @@
             <!-- Left Sidebar Navigation -->
             <aside class="sidebar">
                 <nav class="sidebar-nav">
+                    <!-- 汇总标签 -->
+                    <div class="nav-section nav-summary">
+                        <button class="nav-btn nav-summary-btn active" data-category="all-summary">
+                            <i class="fas fa-chart-pie"></i>
+                            <span>全部物品汇总</span>
+                            <div class="summary-stats">
+                                <div class="summary-stat">
+                                    <span class="summary-label">总计</span>
+                                    <span class="summary-value" id="summaryTotal">0</span>
+                                </div>
+                                <div class="summary-stat alert">
+                                    <span class="summary-label">需关注</span>
+                                    <span class="summary-value" id="summaryAlert">0</span>
+                                </div>
+                            </div>
+                        </button>
+                    </div>
+                    
                     <div class="nav-section">
                         <h3 class="nav-title">食品类</h3>
-                        <button class="nav-btn active" data-category="food-fresh">
+                        <button class="nav-btn" data-category="food-fresh">
                             <i class="fas fa-leaf"></i>
                             <span>新鲜食品</span>
                         </button>
@@ -150,7 +168,7 @@
                 <!-- Category Content -->
                 <div class="category-content">
                     <div class="category-header">
-                        <h2 id="categoryTitle">新鲜食品</h2>
+                        <h2 id="categoryTitle">全部物品汇总</h2>
                         <div class="category-stats">
                             <span class="stat-item">
                                 <i class="fas fa-boxes"></i>

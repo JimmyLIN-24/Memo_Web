@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>小香香的物品管理系统</title>
     
     <!-- PWA支持 -->
@@ -385,14 +385,26 @@
     <script>
         // 检查登录状态并显示退出按钮
         document.addEventListener('DOMContentLoaded', function() {
-            const currentUser = localStorage.getItem('memo_current_user');
-            if (currentUser) {
-                const logoutSection = document.getElementById('logoutSection');
-                if (logoutSection) {
-                    logoutSection.style.display = 'block';
-                }
-            }
+            checkLoginStatus();
         });
+
+        // 当页面获得焦点时也检查状态
+        window.addEventListener('focus', function() {
+            checkLoginStatus();
+        });
+
+        function checkLoginStatus() {
+            const currentUser = localStorage.getItem('memo_current_user');
+            const logoutSection = document.getElementById('logoutSection');
+            
+            if (currentUser && logoutSection) {
+                logoutSection.style.display = 'block';
+                console.log('用户已登录，显示退出按钮');
+            } else if (logoutSection) {
+                logoutSection.style.display = 'none';
+                console.log('用户未登录，隐藏退出按钮');
+            }
+        }
 
         function enterApp() {
             // 添加进入动画效果
@@ -416,14 +428,23 @@
                 // 清除登录状态
                 localStorage.removeItem('memo_current_user');
                 
+                // 显示消息
+                showMessage('已退出登录，即将跳转到登录界面', 'info');
+                
                 // 隐藏退出按钮
                 const logoutSection = document.getElementById('logoutSection');
                 if (logoutSection) {
                     logoutSection.style.display = 'none';
                 }
                 
-                // 显示消息
-                showMessage('已退出登录', 'info');
+                // 页面淡出效果
+                document.body.style.transition = 'opacity 0.5s ease';
+                document.body.style.opacity = '0';
+                
+                setTimeout(() => {
+                    // 跳转到应用页面，会自动显示登录界面
+                    window.location.replace('app.html');
+                }, 1000);
             }
         }
 

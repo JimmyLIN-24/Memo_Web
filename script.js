@@ -13,7 +13,7 @@ if ('serviceWorker' in navigator) {
 
 // Global variables
 let items = JSON.parse(localStorage.getItem('inventoryItems')) || [];
-let currentCategory = 'food-fresh';
+let currentCategory = 'all-summary';
 let editingItemId = null;
 let settings = JSON.parse(localStorage.getItem('appSettings')) || {
     defaultThreshold: 5,
@@ -351,10 +351,20 @@ function showIOSInstallPrompt() {
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
-    loadCurrentCategory();
+    // 确保默认选择汇总视图
+    currentCategory = 'all-summary';
+    loadSummaryView();
     updateStats();
     setupEventListeners();
     loadSettings();
+    
+    // 确保汇总按钮是激活状态
+    navButtons.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.category === 'all-summary') {
+            btn.classList.add('active');
+        }
+    });
     
     // Check notifications after a short delay to ensure DOM is ready
     setTimeout(() => {
@@ -379,7 +389,15 @@ function setupEventListeners() {
             navButtons.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             currentCategory = btn.dataset.category;
-            loadCurrentCategory();
+            
+                if (currentCategory === 'all-summary') {
+        loadSummaryView();
+    } else {
+        loadCurrentCategory();
+    }
+    
+    // 总是更新汇总统计
+    updateSummaryStats();
         });
     });
 
@@ -491,6 +509,11 @@ function createItemCard(item) {
 }
 
 function updateStats() {
+    if (currentCategory === 'all-summary') {
+        updateSummaryStats();
+        return;
+    }
+    
     const categoryItems = items.filter(item => item.category === currentCategory);
     const today = new Date();
     const warningDate = new Date();
@@ -503,6 +526,49 @@ function updateStats() {
     
     totalItems.textContent = categoryItems.length;
     alertItems.textContent = alertCount;
+    
+    // 同时更新汇总统计
+    updateSummaryStats();
+}
+
+function loadSummaryView() {
+    categoryTitle.textContent = '全部物品汇总';
+    
+    if (items.length === 0) {
+        itemsGrid.style.display = 'none';
+        emptyState.style.display = 'block';
+    } else {
+        itemsGrid.style.display = 'grid';
+        emptyState.style.display = 'none';
+        renderItems(items);
+    }
+    
+    updateSummaryStats();
+}
+
+function updateSummaryStats() {
+    const today = new Date();
+    const warningDate = new Date();
+    warningDate.setDate(today.getDate() + settings.expiryWarningDays);
+    
+    const totalCount = items.length;
+    const alertCount = items.filter(item => {
+        const expiryDate = new Date(item.expiry);
+        return item.quantity <= item.threshold || expiryDate <= warningDate;
+    }).length;
+    
+    // 更新汇总标签的统计
+    const summaryTotal = document.getElementById('summaryTotal');
+    const summaryAlert = document.getElementById('summaryAlert');
+    
+    if (summaryTotal) summaryTotal.textContent = totalCount;
+    if (summaryAlert) summaryAlert.textContent = alertCount;
+    
+    // 如果当前在汇总视图，也更新主要统计
+    if (currentCategory === 'all-summary') {
+        totalItems.textContent = totalCount;
+        alertItems.textContent = alertCount;
+    }
 }
 
 function openAddModal() {
@@ -510,7 +576,11 @@ function openAddModal() {
     document.getElementById('modalTitle').textContent = '添加物品';
     document.getElementById('saveBtn').textContent = '保存';
     itemForm.reset();
-    document.getElementById('itemCategory').value = currentCategory;
+    
+    // 如果当前是汇总视图，默认选择第一个分类
+    const defaultCategory = currentCategory === 'all-summary' ? 'food-fresh' : currentCategory;
+    document.getElementById('itemCategory').value = defaultCategory;
+    
     loadQuickSelectItems();
     itemModal.classList.add('active');
 }
@@ -593,7 +663,14 @@ function saveItem(e) {
     }
     
     saveToStorage();
-    loadCurrentCategory();
+    
+    // 重新加载当前分类或汇总视图
+    if (currentCategory === 'all-summary') {
+        loadSummaryView();
+    } else {
+        loadCurrentCategory();
+    }
+    
     closeItemModal();
     
     // Update notifications
@@ -606,7 +683,13 @@ function deleteItem(itemId) {
     if (confirm('确定要删除这个物品吗？')) {
         items = items.filter(item => item.id !== itemId);
         saveToStorage();
-        loadCurrentCategory();
+        
+        // 重新加载当前分类或汇总视图
+        if (currentCategory === 'all-summary') {
+            loadSummaryView();
+        } else {
+            loadCurrentCategory();
+        }
         
         // Update notifications
         setTimeout(() => {
