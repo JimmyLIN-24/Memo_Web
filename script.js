@@ -668,7 +668,13 @@ function loadSettings() {
 }
 
 function saveToStorage() {
-    localStorage.setItem('inventoryItems', JSON.stringify(items));
+    // 如果是Grace快捷用户，优先保存到专用存储
+    if (typeof authManager !== 'undefined' && authManager.currentUser && authManager.currentUser.isQuickUser) {
+        authManager.saveGraceUserData();
+    } else {
+        // 普通用户或未登录用户保存到默认位置
+        localStorage.setItem('inventoryItems', JSON.stringify(items));
+    }
 }
 
 function formatDate(dateString) {

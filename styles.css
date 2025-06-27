@@ -130,6 +130,33 @@ body {
     50% { opacity: 0.5; }
 }
 
+/* Home Button Styles */
+.home-btn {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    margin-left: 0.5rem;
+}
+
+.home-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+}
+
+.home-btn i {
+    font-size: 0.9rem;
+}
+
 .app-title {
     font-size: 1.5rem;
     font-weight: 700;

@@ -1,9 +1,8 @@
-// 用户认证和云端数据同步系统
+// 用户认证和数据管理系统
 class AuthManager {
     constructor() {
         this.currentUser = null;
         this.isLoggedIn = false;
-        this.cloudStorage = new CloudStorage();
         this.initAuth();
     }
 
@@ -15,8 +14,14 @@ class AuthManager {
             this.currentUser = JSON.parse(savedUser);
             this.isLoggedIn = true;
             this.showUserInfo();
-            // 自动同步云端数据
-            this.syncFromCloud();
+            
+            // 如果是Grace快捷用户，加载专用数据
+            if (this.currentUser.isQuickUser) {
+                this.loadGraceUserData();
+            } else {
+                // 其他用户自动同步云端数据
+                this.syncFromCloud();
+            }
         } else {
             this.showLoginForm();
         }
@@ -33,7 +38,8 @@ class AuthManager {
                     <p>登录以同步您的备忘录数据</p>
                 </div>
                 <div class="auth-tabs">
-                    <button class="auth-tab active" data-tab="login">登录</button>
+                    <button class="auth-tab active" data-tab="login">账号登录</button>
+                    <button class="auth-tab" data-tab="quickLogin">快捷登录</button>
                     <button class="auth-tab" data-tab="register">注册</button>
                 </div>
                 
@@ -52,6 +58,17 @@ class AuthManager {
                     </div>
                 </form>
 
+                <!-- 快捷登录表单 -->
+                <form id="quickLoginForm" class="auth-form">
+                    <div class="form-group">
+                        <label>验证码</label>
+                        <input type="text" id="quickLoginCode" placeholder="输入验证码" required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">快捷登录</button>
+                    </div>
+                </form>
+                
                 <!-- 注册表单 -->
                 <form id="registerForm" class="auth-form">
                     <div class="form-group">
@@ -108,6 +125,12 @@ class AuthManager {
             this.handleLogin(modal);
         });
 
+        // 快捷登录表单提交
+        modal.querySelector('#quickLoginForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleQuickLogin(modal);
+        });
+
         // 注册表单提交
         modal.querySelector('#registerForm').addEventListener('submit', (e) => {
             e.preventDefault();
@@ -115,7 +138,105 @@ class AuthManager {
         });
     }
 
-    // 处理登录
+    // 处理快捷登录
+    async handleQuickLogin(modal) {
+        const code = modal.querySelector('#quickLoginCode').value.trim();
+
+        if (!code) {
+            this.showMessage('请输入验证码', 'error');
+            return;
+        }
+
+        if (code === 'Grace') {
+            try {
+                // 创建Grace专用用户对象
+                const graceUser = {
+                    id: 'grace_special_user',
+                    username: 'Grace',
+                    nickname: '小香香Grace',
+                    isQuickUser: true
+                };
+
+                this.currentUser = graceUser;
+                this.isLoggedIn = true;
+
+                // 保存登录状态
+                localStorage.setItem('memo_current_user', JSON.stringify(graceUser));
+
+                // 使用Grace专用的存储key
+                this.loadGraceUserData();
+
+                // 关闭登录模态框
+                modal.remove();
+
+                // 显示用户信息
+                this.showUserInfo();
+
+                this.showMessage('欢迎回来，小香香Grace！', 'success');
+
+                // 重新加载数据
+                if (typeof loadCurrentCategory === 'function') {
+                    loadCurrentCategory();
+                }
+                if (typeof notificationManager !== 'undefined') {
+                    notificationManager.checkAndShowNotifications();
+                }
+            } catch (error) {
+                console.error('快捷登录失败:', error);
+                this.showMessage('登录失败，请稍后重试', 'error');
+            }
+        } else {
+            this.showMessage('验证码错误，请重试', 'error');
+        }
+    }
+
+    // 加载Grace用户数据
+    loadGraceUserData() {
+        try {
+            // 使用专用的存储key
+            const graceItems = localStorage.getItem('grace_inventoryItems');
+            const graceSettings = localStorage.getItem('grace_appSettings');
+
+            if (graceItems) {
+                const parsedItems = JSON.parse(graceItems);
+                if (typeof items !== 'undefined') {
+                    items.length = 0;
+                    items.push(...parsedItems);
+                }
+            }
+
+            if (graceSettings) {
+                const parsedSettings = JSON.parse(graceSettings);
+                if (typeof settings !== 'undefined') {
+                    Object.assign(settings, parsedSettings);
+                }
+            }
+
+            console.log('Grace用户数据已加载');
+        } catch (error) {
+            console.error('加载Grace用户数据失败:', error);
+        }
+    }
+
+    // 保存Grace用户数据
+    saveGraceUserData() {
+        if (this.currentUser && this.currentUser.isQuickUser) {
+            try {
+                // 使用专用的存储key，确保数据持久化
+                if (typeof items !== 'undefined') {
+                    localStorage.setItem('grace_inventoryItems', JSON.stringify(items));
+                }
+                if (typeof settings !== 'undefined') {
+                    localStorage.setItem('grace_appSettings', JSON.stringify(settings));
+                }
+                console.log('Grace用户数据已保存');
+            } catch (error) {
+                console.error('保存Grace用户数据失败:', error);
+            }
+        }
+    }
+
+    // 处理普通登录
     async handleLogin(modal) {
         const username = modal.querySelector('#loginUsername').value;
         const password = modal.querySelector('#loginPassword').value;
@@ -126,31 +247,23 @@ class AuthManager {
         }
 
         try {
-            // 显示加载状态
             this.showMessage('正在登录...', 'info');
             
-            // 验证用户凭据
-            const user = await this.cloudStorage.authenticateUser(username, password);
+            // 简单的本地用户验证
+            const users = JSON.parse(localStorage.getItem('memo_users') || '{}');
+            const userKey = username + ':' + btoa(password);
             
-            if (user) {
+            if (users[userKey]) {
+                const user = users[userKey];
                 this.currentUser = user;
                 this.isLoggedIn = true;
                 
-                // 保存登录状态
                 localStorage.setItem('memo_current_user', JSON.stringify(user));
                 
-                // 同步云端数据
-                await this.syncFromCloud();
-                
-                // 关闭登录模态框
                 modal.remove();
-                
-                // 显示用户信息
                 this.showUserInfo();
-                
                 this.showMessage(`欢迎回来，${user.nickname || user.username}！`, 'success');
                 
-                // 重新加载数据
                 if (typeof loadCurrentCategory === 'function') {
                     loadCurrentCategory();
                 }
@@ -173,7 +286,6 @@ class AuthManager {
         const confirmPassword = modal.querySelector('#confirmPassword').value;
         const nickname = modal.querySelector('#registerNickname').value || '小香香Grace';
 
-        // 验证输入
         if (!username || !password || !confirmPassword) {
             this.showMessage('请填写完整的注册信息', 'error');
             return;
@@ -195,105 +307,35 @@ class AuthManager {
         }
 
         try {
-            // 显示加载状态
             this.showMessage('正在注册...', 'info');
             
-            // 创建用户
-            const user = await this.cloudStorage.createUser(username, password, nickname);
+            const users = JSON.parse(localStorage.getItem('memo_users') || '{}');
+            const userKey = username + ':' + btoa(password);
             
-            if (user) {
-                this.currentUser = user;
-                this.isLoggedIn = true;
-                
-                // 保存登录状态
-                localStorage.setItem('memo_current_user', JSON.stringify(user));
-                
-                // 如果本地有数据，上传到云端
-                if (typeof items !== 'undefined' && items.length > 0) {
-                    await this.syncToCloud();
-                }
-                
-                // 关闭注册模态框
-                modal.remove();
-                
-                // 显示用户信息
-                this.showUserInfo();
-                
-                this.showMessage(`注册成功！欢迎，${nickname}！`, 'success');
-                
-                // 重新加载数据
-                if (typeof loadCurrentCategory === 'function') {
-                    loadCurrentCategory();
-                }
-                if (typeof notificationManager !== 'undefined') {
-                    notificationManager.checkAndShowNotifications();
-                }
-            } else {
+            // 检查用户是否已存在
+            if (users[userKey]) {
                 this.showMessage('用户名已存在，请选择其他用户名', 'error');
+                return;
             }
-        } catch (error) {
-            console.error('注册失败:', error);
-            this.showMessage('注册失败，请稍后重试', 'error');
-        }
-    }
-
-    // 显示用户信息
-    showUserInfo() {
-        if (!this.currentUser) return;
-
-        const userInfoEl = document.querySelector('.user-info h3');
-        if (userInfoEl) {
-            userInfoEl.textContent = this.currentUser.nickname || this.currentUser.username;
-        }
-
-        // 添加同步状态指示器
-        this.addSyncIndicator();
-    }
-
-    // 添加同步状态指示器
-    addSyncIndicator() {
-        let syncIndicator = document.querySelector('.sync-indicator');
-        if (!syncIndicator) {
-            syncIndicator = document.createElement('div');
-            syncIndicator.className = 'sync-indicator';
             
-            const userInfo = document.querySelector('.user-info');
-            if (userInfo) {
-                userInfo.appendChild(syncIndicator);
-            }
-        }
+            const user = {
+                id: 'user_' + Date.now(),
+                username: username,
+                nickname: nickname,
+                createdAt: new Date().toISOString()
+            };
 
-        syncIndicator.innerHTML = `
-            <span class="sync-status synced">
-                <i class="fas fa-cloud-check"></i>
-                已同步
-            </span>
-            <button class="sync-btn" onclick="authManager.manualSync()">
-                <i class="fas fa-sync-alt"></i>
-                手动同步
-            </button>
-            <button class="logout-btn" onclick="authManager.logout()">
-                <i class="fas fa-sign-out-alt"></i>
-                退出登录
-            </button>
-        `;
-    }
-
-    // 手动同步
-    async manualSync() {
-        if (!this.isLoggedIn) return;
-
-        try {
-            this.setSyncStatus('syncing', '同步中...');
+            users[userKey] = user;
+            localStorage.setItem('memo_users', JSON.stringify(users));
             
-            // 双向同步：先上传本地数据，再下载云端数据
-            await this.syncToCloud();
-            await this.syncFromCloud();
+            this.currentUser = user;
+            this.isLoggedIn = true;
+            localStorage.setItem('memo_current_user', JSON.stringify(user));
             
-            this.setSyncStatus('synced', '已同步');
-            this.showMessage('数据同步成功！', 'success');
+            modal.remove();
+            this.showUserInfo();
+            this.showMessage(`注册成功！欢迎，${nickname}！`, 'success');
             
-            // 重新加载界面
             if (typeof loadCurrentCategory === 'function') {
                 loadCurrentCategory();
             }
@@ -301,153 +343,6 @@ class AuthManager {
                 notificationManager.checkAndShowNotifications();
             }
         } catch (error) {
-            console.error('同步失败:', error);
-            this.setSyncStatus('error', '同步失败');
-            this.showMessage('同步失败，请稍后重试', 'error');
-        }
-    }
-
-    // 设置同步状态
-    setSyncStatus(status, text) {
-        const syncStatus = document.querySelector('.sync-status');
-        if (syncStatus) {
-            syncStatus.className = `sync-status ${status}`;
-            syncStatus.innerHTML = `<i class="fas fa-cloud-${status === 'synced' ? 'check' : status === 'syncing' ? 'upload-alt fa-spin' : 'exclamation-triangle'}"></i> ${text}`;
-        }
-    }
-
-    // 同步到云端
-    async syncToCloud() {
-        if (!this.isLoggedIn) return;
-
-        try {
-            const userData = {
-                items: typeof items !== 'undefined' ? items : [],
-                settings: typeof settings !== 'undefined' ? settings : {},
-                lastSync: new Date().toISOString()
-            };
-
-            await this.cloudStorage.saveUserData(this.currentUser.id, userData);
-            console.log('数据已上传到云端');
-        } catch (error) {
-            console.error('上传数据失败:', error);
-            throw error;
-        }
-    }
-
-    // 从云端同步
-    async syncFromCloud() {
-        if (!this.isLoggedIn) return;
-
-        try {
-            const userData = await this.cloudStorage.loadUserData(this.currentUser.id);
-            
-            if (userData) {
-                // 更新本地数据
-                if (userData.items && typeof items !== 'undefined') {
-                    items.length = 0; // 清空当前数组
-                    items.push(...userData.items);
-                    if (typeof saveToStorage === 'function') {
-                        saveToStorage();
-                    }
-                }
-                
-                if (userData.settings && typeof settings !== 'undefined') {
-                    Object.assign(settings, userData.settings);
-                    localStorage.setItem('appSettings', JSON.stringify(settings));
-                }
-                
-                console.log('云端数据已同步到本地');
-            }
-        } catch (error) {
-            console.error('下载数据失败:', error);
-            throw error;
-        }
-    }
-
-    // 退出登录
-    logout() {
-        if (confirm('确定要退出登录吗？\n\n退出后将无法同步云端数据，但本地数据会保留。')) {
-            // 清除登录状态
-            this.currentUser = null;
-            this.isLoggedIn = false;
-            localStorage.removeItem('memo_current_user');
-            
-            // 重新显示登录界面
-            this.showLoginForm();
-            
-            // 移除同步指示器
-            const syncIndicator = document.querySelector('.sync-indicator');
-            if (syncIndicator) {
-                syncIndicator.remove();
-            }
-            
-            this.showMessage('已退出登录', 'info');
-        }
-    }
-
-    // 处理注册
-    async handleRegister(modal) {
-        const username = modal.querySelector('#registerUsername').value;
-        const password = modal.querySelector('#registerPassword').value;
-        const confirmPassword = modal.querySelector('#confirmPassword').value;
-        const nickname = modal.querySelector('#registerNickname').value || '小香香Grace';
-
-        // 验证输入
-        if (!username || !password || !confirmPassword) {
-            this.showMessage('请填写完整的注册信息', 'error');
-            return;
-        }
-
-        if (password !== confirmPassword) {
-            this.showMessage('两次输入的密码不一致', 'error');
-            return;
-        }
-
-        if (username.length < 3 || username.length > 16) {
-            this.showMessage('用户名长度应为3-16位字符', 'error');
-            return;
-        }
-
-        if (password.length < 6 || password.length > 20) {
-            this.showMessage('密码长度应为6-20位字符', 'error');
-            return;
-        }
-
-        try {
-            // 显示加载状态
-            this.showMessage('正在注册...', 'info');
-            
-            // 创建用户
-            const user = await this.cloudStorage.createUser(username, password, nickname);
-            
-            if (user) {
-                this.currentUser = user;
-                this.isLoggedIn = true;
-                
-                // 保存登录状态
-                localStorage.setItem('memo_current_user', JSON.stringify(user));
-                
-                // 如果本地有数据，上传到云端
-                if (items.length > 0) {
-                    await this.syncToCloud();
-                }
-                
-                // 关闭注册模态框
-                modal.remove();
-                
-                // 显示用户信息
-                this.showUserInfo();
-                
-                this.showMessage(`注册成功！欢迎，${nickname}！`, 'success');
-                
-                // 重新加载数据
-                loadCurrentCategory();
-                notificationManager.checkAndShowNotifications();
-            } else {
-                this.showMessage('用户名已存在，请选择其他用户名', 'error');
-            }
-        } catch (error) {
             console.error('注册失败:', error);
             this.showMessage('注册失败，请稍后重试', 'error');
         }
@@ -457,12 +352,12 @@ class AuthManager {
     showUserInfo() {
         if (!this.currentUser) return;
 
-        const userInfoEl = document.querySelector('.user-info h3');
-        if (userInfoEl) {
-            userInfoEl.textContent = this.currentUser.nickname || this.currentUser.username;
+        const userNameEl = document.querySelector('.user-name');
+        if (userNameEl) {
+            userNameEl.textContent = this.currentUser.nickname || this.currentUser.username;
         }
 
-        // 添加同步状态指示器
+        // 为Grace用户添加特殊的同步指示器
         this.addSyncIndicator();
     }
 
@@ -479,105 +374,96 @@ class AuthManager {
             }
         }
 
-        syncIndicator.innerHTML = `
-            <span class="sync-status synced">
-                <i class="fas fa-cloud-check"></i>
-                已同步
-            </span>
-            <button class="sync-btn" onclick="authManager.manualSync()">
-                <i class="fas fa-sync-alt"></i>
-                手动同步
-            </button>
-            <button class="logout-btn" onclick="authManager.logout()">
-                <i class="fas fa-sign-out-alt"></i>
-                退出登录
-            </button>
-        `;
+        if (this.currentUser && this.currentUser.isQuickUser) {
+            // Grace用户显示本地保存状态
+            syncIndicator.innerHTML = `
+                <span class="sync-status synced">
+                    <i class="fas fa-save"></i>
+                    本地保存
+                </span>
+                <button class="sync-btn" onclick="authManager.saveGraceUserData()">
+                    <i class="fas fa-save"></i>
+                    手动保存
+                </button>
+                <button class="logout-btn" onclick="authManager.logout()">
+                    <i class="fas fa-sign-out-alt"></i>
+                    退出登录
+                </button>
+            `;
+        } else {
+            // 普通用户显示云端同步状态
+            syncIndicator.innerHTML = `
+                <span class="sync-status synced">
+                    <i class="fas fa-cloud-check"></i>
+                    已同步
+                </span>
+                <button class="sync-btn" onclick="authManager.manualSync()">
+                    <i class="fas fa-sync-alt"></i>
+                    手动同步
+                </button>
+                <button class="logout-btn" onclick="authManager.logout()">
+                    <i class="fas fa-sign-out-alt"></i>
+                    退出登录
+                </button>
+            `;
+        }
     }
 
-    // 手动同步
+    // 手动同步（仅对普通用户）
     async manualSync() {
         if (!this.isLoggedIn) return;
 
-        try {
-            this.setSyncStatus('syncing', '同步中...');
-            
-            // 双向同步：先上传本地数据，再下载云端数据
-            await this.syncToCloud();
-            await this.syncFromCloud();
-            
-            this.setSyncStatus('synced', '已同步');
-            this.showMessage('数据同步成功！', 'success');
-            
-            // 重新加载界面
-            loadCurrentCategory();
-            notificationManager.checkAndShowNotifications();
-        } catch (error) {
-            console.error('同步失败:', error);
-            this.setSyncStatus('error', '同步失败');
-            this.showMessage('同步失败，请稍后重试', 'error');
+        // Grace快捷用户使用本地存储，不进行云端同步
+        if (this.currentUser && this.currentUser.isQuickUser) {
+            this.saveGraceUserData();
+            this.showMessage('本地数据已保存！', 'success');
+            return;
         }
+
+        // 普通用户的数据保存到localStorage就够了
+        if (typeof saveToStorage === 'function') {
+            saveToStorage();
+        }
+        this.showMessage('数据已保存！', 'success');
     }
 
-    // 设置同步状态
-    setSyncStatus(status, text) {
-        const syncStatus = document.querySelector('.sync-status');
-        if (syncStatus) {
-            syncStatus.className = `sync-status ${status}`;
-            syncStatus.innerHTML = `<i class="fas fa-cloud-${status === 'synced' ? 'check' : status === 'syncing' ? 'upload-alt fa-spin' : 'exclamation-triangle'}"></i> ${text}`;
-        }
-    }
-
-    // 同步到云端
-    async syncToCloud() {
-        if (!this.isLoggedIn) return;
-
-        try {
-            const userData = {
-                items: items,
-                settings: settings,
-                lastSync: new Date().toISOString()
-            };
-
-            await this.cloudStorage.saveUserData(this.currentUser.id, userData);
-            console.log('数据已上传到云端');
-        } catch (error) {
-            console.error('上传数据失败:', error);
-            throw error;
-        }
-    }
-
-    // 从云端同步
+    // 从云端同步（仅对普通用户）
     async syncFromCloud() {
-        if (!this.isLoggedIn) return;
-
+        // Grace用户不使用云端同步
+        if (this.currentUser && this.currentUser.isQuickUser) {
+            return;
+        }
+        
+        // 普通用户直接从localStorage加载
         try {
-            const userData = await this.cloudStorage.loadUserData(this.currentUser.id);
+            const savedItems = localStorage.getItem('inventoryItems');
+            const savedSettings = localStorage.getItem('appSettings');
             
-            if (userData) {
-                // 更新本地数据
-                if (userData.items) {
-                    items.length = 0; // 清空当前数组
-                    items.push(...userData.items);
-                    saveToStorage();
-                }
-                
-                if (userData.settings) {
-                    Object.assign(settings, userData.settings);
-                    localStorage.setItem('appSettings', JSON.stringify(settings));
-                }
-                
-                console.log('云端数据已同步到本地');
+            if (savedItems && typeof items !== 'undefined') {
+                const parsedItems = JSON.parse(savedItems);
+                items.length = 0;
+                items.push(...parsedItems);
+            }
+            
+            if (savedSettings && typeof settings !== 'undefined') {
+                const parsedSettings = JSON.parse(savedSettings);
+                Object.assign(settings, parsedSettings);
             }
         } catch (error) {
-            console.error('下载数据失败:', error);
-            throw error;
+            console.error('加载数据失败:', error);
         }
     }
 
     // 退出登录
     logout() {
-        if (confirm('确定要退出登录吗？\n\n退出后将无法同步云端数据，但本地数据会保留。')) {
+        if (confirm('确定要退出登录吗？\n\n退出后本地数据会保留。')) {
+            // 先保存当前数据
+            if (this.currentUser && this.currentUser.isQuickUser) {
+                this.saveGraceUserData();
+            } else if (typeof saveToStorage === 'function') {
+                saveToStorage();
+            }
+            
             // 清除登录状态
             this.currentUser = null;
             this.isLoggedIn = false;
@@ -598,12 +484,10 @@ class AuthManager {
 
     // 显示消息
     showMessage(message, type = 'info') {
-        // 创建消息提示
         const messageEl = document.createElement('div');
         messageEl.className = `auth-message ${type}`;
         messageEl.textContent = message;
         
-        // 样式
         messageEl.style.cssText = `
             position: fixed;
             top: 20px;
@@ -621,79 +505,11 @@ class AuthManager {
         
         document.body.appendChild(messageEl);
         
-        // 3秒后自动移除
         setTimeout(() => {
             if (messageEl.parentNode) {
                 messageEl.remove();
             }
         }, 3000);
-    }
-}
-
-// 云端存储类
-class CloudStorage {
-    constructor() {
-        this.users = JSON.parse(localStorage.getItem('memo_cloud_users')) || {};
-        this.userData = JSON.parse(localStorage.getItem('memo_cloud_data')) || {};
-    }
-
-    // 创建用户
-    async createUser(username, password, nickname) {
-        if (this.users[username]) {
-            return null;
-        }
-
-        const userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-        const user = {
-            id: userId,
-            username: username,
-            password: this.hashPassword(password),
-            nickname: nickname,
-            createdAt: new Date().toISOString()
-        };
-
-        this.users[username] = user;
-        this.saveUsers();
-        
-        return {
-            id: user.id,
-            username: user.username,
-            nickname: user.nickname
-        };
-    }
-
-    // 验证用户
-    async authenticateUser(username, password) {
-        const user = this.users[username];
-        if (user && user.password === this.hashPassword(password)) {
-            return {
-                id: user.id,
-                username: user.username,
-                nickname: user.nickname
-            };
-        }
-        return null;
-    }
-
-    // 保存用户数据
-    async saveUserData(userId, data) {
-        this.userData[userId] = data;
-        localStorage.setItem('memo_cloud_data', JSON.stringify(this.userData));
-    }
-
-    // 加载用户数据
-    async loadUserData(userId) {
-        return this.userData[userId] || null;
-    }
-
-    // 简单的密码哈希
-    hashPassword(password) {
-        return btoa(password);
-    }
-
-    // 保存用户列表
-    saveUsers() {
-        localStorage.setItem('memo_cloud_users', JSON.stringify(this.users));
     }
 }
 
@@ -703,52 +519,4 @@ let authManager;
 // 页面加载时初始化认证系统
 document.addEventListener('DOMContentLoaded', function() {
     authManager = new AuthManager();
-});
-
-// 重写原有的saveToStorage函数，加入云端同步
-document.addEventListener('DOMContentLoaded', function() {
-    // 等待原始脚本加载完成
-    setTimeout(() => {
-        if (typeof window.saveToStorage === 'function') {
-            const originalSaveToStorage = window.saveToStorage;
-            window.saveToStorage = function() {
-                // 先保存到本地
-                originalSaveToStorage();
-                
-                // 如果已登录，延迟同步到云端
-                if (authManager && authManager.isLoggedIn) {
-                    setTimeout(() => {
-                        authManager.syncToCloud().catch(error => {
-                            console.error('自动同步失败:', error);
-                            if (authManager.setSyncStatus) {
-                                authManager.setSyncStatus('error', '同步失败');
-                            }
-                        });
-                    }, 1000);
-                }
-            };
-        }
-    }, 500);
-});
-
-// 页面加载时初始化认证系统
-document.addEventListener('DOMContentLoaded', function() {
-    authManager = new AuthManager();
-});
-
-// 重写原有的saveToStorage函数，加入云端同步
-const originalSaveToStorage = window.saveToStorage;
-window.saveToStorage = function() {
-    // 先保存到本地
-    originalSaveToStorage();
-    
-    // 如果已登录，延迟同步到云端
-    if (authManager && authManager.isLoggedIn) {
-        setTimeout(() => {
-            authManager.syncToCloud().catch(error => {
-                console.error('自动同步失败:', error);
-                authManager.setSyncStatus('error', '同步失败');
-            });
-        }, 1000);
-    }
-}; 
+}); 
