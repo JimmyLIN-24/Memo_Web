@@ -24,6 +24,8 @@ class NotificationManager {
     constructor() {
         this.container = document.getElementById('notificationsContainer');
         this.notifications = new Map(); // Track notifications by item ID
+        this.maxVisible = 2; // 默认显示2条通知
+        this.showingAll = false; // 当前是否显示全部
     }
 
     show(id, type, title, message, icon = '⚠️') {
@@ -94,6 +96,8 @@ class NotificationManager {
                     notification.parentNode.removeChild(notification);
                 }
                 this.notifications.delete(id);
+                // 更新显示状态
+                this.updateNotificationDisplay();
             }, 300);
         }
     }
@@ -101,6 +105,69 @@ class NotificationManager {
     clear() {
         this.container.innerHTML = '';
         this.notifications.clear();
+        this.showingAll = false;
+    }
+
+    // 更新通知显示状态
+    updateNotificationDisplay() {
+        const allNotifications = Array.from(this.container.querySelectorAll('.notification-item:not(.toggle-btn)'));
+        const totalCount = allNotifications.length;
+        
+        // 移除之前的切换按钮
+        const existingToggle = this.container.querySelector('.notification-toggle');
+        if (existingToggle) {
+            existingToggle.remove();
+        }
+        
+        if (totalCount <= this.maxVisible) {
+            // 如果通知数量不超过限制，全部显示
+            allNotifications.forEach(notification => {
+                notification.style.display = 'flex';
+            });
+            return;
+        }
+        
+        // 显示/隐藏通知
+        allNotifications.forEach((notification, index) => {
+            if (this.showingAll || index < this.maxVisible) {
+                notification.style.display = 'flex';
+            } else {
+                notification.style.display = 'none';
+            }
+        });
+        
+        // 添加展开/收起按钮
+        this.addToggleButton(totalCount);
+    }
+
+    // 添加展开/收起按钮
+    addToggleButton(totalCount) {
+        const toggleBtn = document.createElement('div');
+        toggleBtn.className = 'notification-toggle';
+        
+        if (this.showingAll) {
+            toggleBtn.innerHTML = `
+                <div class="toggle-content">
+                    <span>收起通知</span>
+                    <i class="fas fa-chevron-up"></i>
+                </div>
+            `;
+        } else {
+            const hiddenCount = totalCount - this.maxVisible;
+            toggleBtn.innerHTML = `
+                <div class="toggle-content">
+                    <span>显示更多 (还有${hiddenCount}条)</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+            `;
+        }
+        
+        toggleBtn.addEventListener('click', () => {
+            this.showingAll = !this.showingAll;
+            this.updateNotificationDisplay();
+        });
+        
+        this.container.appendChild(toggleBtn);
     }
 
     // Check all items and show relevant notifications
@@ -174,6 +241,9 @@ class NotificationManager {
                 );
             }
         });
+
+        // 更新通知显示状态
+        this.updateNotificationDisplay();
     }
 }
 
@@ -988,36 +1058,110 @@ function toggleMobileActions(itemId) {
     }
 }
 
-// 滚动隐藏头部功能
+// 渐进式头部隐藏功能
 function initScrollHeader() {
-    let lastScrollY = window.scrollY;
-    let isHeaderHidden = false;
-    const header = document.querySelector('.app-header');
+    let lastScrollY = 0;
+    let scrollTimeout = null;
+    let isScrolling = false;
+    let scrollDirectionCount = 0;
+    let lastScrollDirection = null;
+    
+    const headerTop = document.getElementById('headerTop');
+    const headerMiddle = document.getElementById('headerMiddle');
+    const headerBottom = document.getElementById('headerBottom');
     const mainContent = document.querySelector('.main-content');
+    const sidebar = document.querySelector('.sidebar');
     
     function handleScroll() {
-        const currentScrollY = window.scrollY;
-        const scrollingDown = currentScrollY > lastScrollY;
-        const shouldHideHeader = scrollingDown && currentScrollY > 100;
+        const currentScrollY = this.scrollTop || window.scrollY;
+        const scrollDelta = Math.abs(currentScrollY - lastScrollY);
         
-        if (shouldHideHeader && !isHeaderHidden) {
-            header.classList.add('hidden');
-            isHeaderHidden = true;
-        } else if (!scrollingDown && isHeaderHidden) {
-            header.classList.remove('hidden');
-            isHeaderHidden = false;
+        // 防抖处理：只有滚动距离超过阈值才触发
+        if (scrollDelta < 12) {
+            return;
         }
+        
+        const scrollingDown = currentScrollY > lastScrollY;
+        
+        // 检查滚动方向稳定性
+        if (lastScrollDirection === null || lastScrollDirection === scrollingDown) {
+            scrollDirectionCount++;
+        } else {
+            scrollDirectionCount = 1;
+        }
+        lastScrollDirection = scrollingDown;
+        
+        // 只有滚动方向稳定时才触发变化（至少连续2次同方向）
+        if (scrollDirectionCount < 2) {
+            lastScrollY = currentScrollY;
+            return;
+        }
+        
+        // 清除之前的超时
+        if (scrollTimeout) {
+            clearTimeout(scrollTimeout);
+        }
+        
+        // 设置滚动状态
+        if (!isScrolling) {
+            isScrolling = true;
+            document.body.classList.add('is-scrolling');
+        }
+        
+        // 渐进式隐藏逻辑 - 增加迟滞区间防止反复横跳
+        requestAnimationFrame(() => {
+            const topHidden = headerTop.classList.contains('hidden');
+            const middleHidden = headerMiddle.classList.contains('hidden');
+            
+            if (scrollingDown) {
+                // 向下滚动：逐步隐藏头部内容
+                if (currentScrollY > 100 && !topHidden) {
+                    headerTop.classList.add('hidden');
+                }
+                if (currentScrollY > 180 && !middleHidden) {
+                    headerMiddle.classList.add('hidden');
+                }
+            } else {
+                // 向上滚动：逐步显示头部内容（增大迟滞区间）
+                if (currentScrollY <= 140 && middleHidden) {
+                    headerMiddle.classList.remove('hidden');
+                }
+                if (currentScrollY <= 60 && topHidden) {
+                    headerTop.classList.remove('hidden');
+                }
+            }
+        });
+        
+        // 设置延迟重置滚动状态
+        scrollTimeout = setTimeout(() => {
+            isScrolling = false;
+            scrollDirectionCount = 0;
+            lastScrollDirection = null;
+            document.body.classList.remove('is-scrolling');
+        }, 200);
         
         lastScrollY = currentScrollY;
     }
     
+    // 节流处理的滚动监听
+    function throttledHandleScroll() {
+        if (!isScrolling) {
+            requestAnimationFrame(handleScroll.bind(this));
+        }
+    }
+    
     // 监听主内容区域的滚动
     if (mainContent) {
-        mainContent.addEventListener('scroll', handleScroll);
+        mainContent.addEventListener('scroll', throttledHandleScroll);
+    }
+    
+    // 监听侧边栏的滚动
+    if (sidebar) {
+        sidebar.addEventListener('scroll', throttledHandleScroll);
     }
     
     // 也监听窗口滚动作为备用
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', throttledHandleScroll);
 }
 
 // Auto-refresh notifications periodically

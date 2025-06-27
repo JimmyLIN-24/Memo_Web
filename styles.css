@@ -48,27 +48,74 @@ body {
 .app-header {
     background: linear-gradient(135deg, var(--primary), var(--secondary));
     color: white;
-    padding: 1rem 1.5rem;
     box-shadow: var(--shadow);
     flex-shrink: 0;
     position: sticky;
     top: 0;
-    z-index: 100;
-    transition: transform 0.3s ease;
+    z-index: 1000;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Smooth scrolling optimization */
+body.is-scrolling .app-header {
+    pointer-events: none;
+}
+
+body.is-scrolling .header-top,
+body.is-scrolling .header-middle {
+    transition-duration: 0.2s;
+}
+
+/* Header Sections */
+.header-top {
+    padding: 0.8rem 1.5rem 0.5rem;
+    transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+    overflow: hidden;
+    transform-origin: top;
+    will-change: transform, opacity, max-height;
+}
+
+.header-middle {
+    padding: 0.5rem 1.5rem;
+    transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+    overflow: hidden;
+    transform-origin: top;
+    will-change: transform, opacity, max-height;
+}
+
+.header-bottom {
+    padding: 0.5rem 1.5rem 1rem;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    overflow: hidden;
+}
+
+/* Progressive hiding states with smoother transitions */
+.header-top.hidden {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+    opacity: 0;
+    transform: scaleY(0);
+}
+
+.header-middle.hidden {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+    opacity: 0;
+    transform: scaleY(0);
 }
 
 .app-header.hidden {
     transform: translateY(-100%);
 }
 
-.header-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1rem;
-}
-
+/* Header Layout */
 .header-left {
     display: flex;
     align-items: center;
@@ -91,6 +138,8 @@ body {
 .user-avatar-small {
     width: 40px;
     height: 40px;
+    min-width: 40px;
+    min-height: 40px;
     border-radius: 50%;
     background: linear-gradient(135deg, var(--pink), var(--pink-light));
     display: flex;
@@ -99,6 +148,7 @@ body {
     font-size: 1.5rem;
     box-shadow: 0 2px 8px rgba(255, 107, 157, 0.3);
     animation: gentle-bounce 3s ease-in-out infinite;
+    flex-shrink: 0;
 }
 
 @keyframes gentle-bounce {
@@ -110,12 +160,15 @@ body {
     display: flex;
     flex-direction: column;
     gap: 0.1rem;
+    flex: 1;
+    max-width: 150px;
 }
 
 .user-name {
     font-weight: 600;
     font-size: 0.9rem;
     color: white;
+    line-height: 1.2;
 }
 
 .user-status {
@@ -146,6 +199,8 @@ body {
     border-radius: 50%;
     width: 35px;
     height: 35px;
+    min-width: 35px;
+    min-height: 35px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -153,6 +208,7 @@ body {
     transition: all 0.3s ease;
     backdrop-filter: blur(10px);
     margin-left: 0.5rem;
+    flex-shrink: 0;
 }
 
 .home-btn:hover {
@@ -182,7 +238,7 @@ body {
 .notifications-container {
     position: sticky;
     top: 0;
-    z-index: 100;
+    z-index: 999;
     padding: 0 1.5rem;
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
@@ -266,6 +322,62 @@ body {
     }
 }
 
+/* Notification Toggle Button */
+.notification-toggle {
+    background: linear-gradient(135deg, var(--gray-100), var(--gray-200));
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius);
+    margin: 0.5rem 0;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    overflow: hidden;
+    position: relative;
+}
+
+.notification-toggle:hover {
+    background: linear-gradient(135deg, var(--gray-200), var(--gray-300));
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.notification-toggle::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    animation: shimmer-toggle 3s ease-in-out infinite;
+}
+
+@keyframes shimmer-toggle {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+.toggle-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.8rem 1rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    font-size: 0.875rem;
+    position: relative;
+    z-index: 1;
+}
+
+.toggle-content i {
+    font-size: 0.75rem;
+    transition: transform 0.3s ease;
+}
+
+.notification-toggle:hover .toggle-content i {
+    transform: scale(1.1);
+}
+
 .notification-icon {
     font-size: 1.2rem;
     flex-shrink: 0;
@@ -313,6 +425,8 @@ body {
     display: flex;
     flex: 1;
     min-height: calc(100vh - 120px);
+    position: relative;
+    overflow: hidden;
 }
 
 /* Sidebar */
@@ -324,8 +438,12 @@ body {
     border-right: 1px solid var(--gray-200);
     flex-shrink: 0;
     overflow-y: auto;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
+    height: 100%;
+    position: relative;
+    z-index: 2;
 }
 
 .sidebar-nav {
@@ -491,6 +609,10 @@ body {
     flex: 1;
     padding: 2rem;
     overflow-y: auto;
+    overflow-x: hidden;
+    height: 100%;
+    position: relative;
+    z-index: 2;
 }
 
 .notification-banner {
@@ -983,7 +1105,10 @@ body {
     .user-avatar-small {
         width: 35px;
         height: 35px;
+        min-width: 35px;
+        min-height: 35px;
         font-size: 1.3rem;
+        flex-shrink: 0;
     }
     
     .user-name {
@@ -1001,10 +1126,11 @@ body {
         min-height: 100vh;
     }
     
-    .header-content {
-        flex-direction: column;
-        gap: 0.5rem;
-        padding: 1rem;
+    /* Progressive Header Sections for Mobile */
+    .header-top,
+    .header-middle,
+    .header-bottom {
+        padding: 0.5rem 1rem;
     }
     
     .header-left {
@@ -1014,9 +1140,16 @@ body {
         text-align: center;
     }
     
+    .header-bottom {
+        display: flex;
+        justify-content: center;
+    }
+    
     .main-layout {
         flex-direction: row; /* 保持水平布局 */
         height: calc(100vh - 80px); /* 减去header高度 */
+        position: relative;
+        overflow: hidden;
     }
     
     .sidebar {
@@ -1028,6 +1161,9 @@ body {
         border-bottom: none;
         overflow-y: auto; /* 垂直滚动 */
         overflow-x: hidden;
+        position: relative;
+        z-index: 3;
+        flex-shrink: 0;
     }
     
     .sidebar-nav {
@@ -1111,7 +1247,10 @@ body {
         flex: 1; /* 占据剩余空间 */
         padding: 1rem;
         overflow-y: auto;
+        overflow-x: hidden;
         height: 100%;
+        position: relative;
+        z-index: 3;
     }
     
     .items-grid {
@@ -1148,6 +1287,15 @@ body {
     .notification-item .notification-details {
         padding-left: 1.5rem;
         font-size: 0.7rem;
+    }
+    
+    .notification-toggle {
+        margin: 0.3rem 0;
+    }
+    
+    .toggle-content {
+        padding: 0.6rem 0.8rem;
+        font-size: 0.8rem;
     }
     
     /* 移动端操作按钮默认隐藏 */
@@ -1253,8 +1401,11 @@ body {
         font-size: 1.25rem;
     }
     
-    .header-content {
-        padding: 0.75rem;
+    /* Very Small Screen Header Sections */
+    .header-top,
+    .header-middle,
+    .header-bottom {
+        padding: 0.4rem 0.8rem;
     }
     
     .user-info {
@@ -1264,7 +1415,10 @@ body {
     .user-avatar-small {
         width: 30px;
         height: 30px;
+        min-width: 30px;
+        min-height: 30px;
         font-size: 1.1rem;
+        flex-shrink: 0;
     }
     
     .user-name {
@@ -1289,6 +1443,11 @@ body {
         width: 26px;
         height: 26px;
         font-size: 0.7rem;
+    }
+    
+    .toggle-content {
+        padding: 0.5rem 0.6rem;
+        font-size: 0.75rem;
     }
 }
 

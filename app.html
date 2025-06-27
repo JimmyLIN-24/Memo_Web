@@ -22,7 +22,8 @@
     <div class="app-container">
         <!-- Header -->
         <header class="app-header">
-            <div class="header-content">
+            <!-- Top Section (User Info) - Can be hidden first -->
+            <div class="header-top" id="headerTop">
                 <div class="header-left">
                     <div class="user-info">
                         <div class="user-avatar-small">👧🏻</div>
@@ -34,11 +35,21 @@
                             <i class="fas fa-home"></i>
                         </button>
                     </div>
+                </div>
+            </div>
+            
+            <!-- Middle Section (Title) - Can be hidden second -->
+            <div class="header-middle" id="headerMiddle">
+                <div class="header-left">
                     <h1 class="app-title">
                         <i class="fas fa-clipboard-list"></i>
                         物品清单备忘录
                     </h1>
                 </div>
+            </div>
+            
+            <!-- Bottom Section (Action Buttons) - Always visible -->
+            <div class="header-bottom" id="headerBottom">
                 <div class="header-actions">
                     <button class="btn btn-primary" id="addItemBtn">
                         <i class="fas fa-plus"></i>
