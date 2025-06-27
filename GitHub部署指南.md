@@ -227,6 +227,8 @@ git pull origin main --allow-unrelated-histories
 当您修改了文件后，使用以下命令更新：
 ```bash
 git add .
+git status
 git commit -m "更新描述"
+git log --oneline -3
 git push
 ``` 

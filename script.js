@@ -16,8 +16,6 @@ let items = JSON.parse(localStorage.getItem('inventoryItems')) || [];
 let currentCategory = 'all-summary';
 let editingItemId = null;
 let settings = JSON.parse(localStorage.getItem('appSettings')) || {
-    defaultThreshold: 5,
-    expiryWarningDays: 7,
     enableNotifications: true
 };
 
@@ -79,12 +77,13 @@ class NotificationManager {
         this.clear();
 
         const today = new Date();
-        const warningDate = new Date();
-        warningDate.setDate(today.getDate() + settings.expiryWarningDays);
 
         items.forEach(item => {
             const expiryDate = new Date(item.expiry);
             const daysUntilExpiry = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+            const itemWarningDays = item.expiryWarningDays || 7;
+            const warningDate = new Date();
+            warningDate.setDate(today.getDate() + itemWarningDays);
 
             // Check for expired items
             if (expiryDate < today) {
@@ -143,9 +142,9 @@ document.head.appendChild(style);
 // Predefined items for quick selection
 const presetItems = {
     'food-fresh': [
-        { name: '牛奶', unit: '盒', threshold: 2, defaultExpiry: 7, quantity: 1 },
-        { name: '鸡蛋', unit: '打', threshold: 1, defaultExpiry: 14, quantity: 1 },
-        { name: '面包', unit: '袋', threshold: 1, defaultExpiry: 3, quantity: 1 },
+        { name: '牛奶', unit: '盒', threshold: 2, defaultExpiry: 7, quantity: 1, expiryWarningDays: 2 },
+        { name: '鸡蛋', unit: '打', threshold: 1, defaultExpiry: 14, quantity: 1, expiryWarningDays: 3 },
+        { name: '面包', unit: '袋', threshold: 1, defaultExpiry: 3, quantity: 1, expiryWarningDays: 1 },
         { name: '蔬菜沙拉', unit: '盒', threshold: 1, defaultExpiry: 2, quantity: 1 },
         { name: '酸奶', unit: '杯', threshold: 3, defaultExpiry: 10, quantity: 4 },
         { name: '水果', unit: '斤', threshold: 1, defaultExpiry: 5, quantity: 2 },
@@ -453,6 +452,7 @@ function createItemCard(item) {
     const today = new Date();
     const expiryDate = new Date(item.expiry);
     const daysUntilExpiry = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+    const itemExpiryWarningDays = item.expiryWarningDays || 7;
     
     let statusClass = '';
     let statusBadge = '';
@@ -462,7 +462,7 @@ function createItemCard(item) {
         statusClass = 'alert';
         statusBadge = '<div class="status-badge expired">已过期</div>';
         expiryClass = 'expired';
-    } else if (daysUntilExpiry <= settings.expiryWarningDays) {
+    } else if (daysUntilExpiry <= itemExpiryWarningDays) {
         statusClass = 'warning';
         statusBadge = '<div class="status-badge expiring">即将过期</div>';
         expiryClass = 'warning';
@@ -477,7 +477,7 @@ function createItemCard(item) {
         ${statusBadge}
         <div class="item-header">
             <h3 class="item-name">${item.name}</h3>
-            <div class="item-actions">
+            <div class="item-actions" id="actions-${item.id}">
                 <button class="action-btn edit" onclick="openEditModal('${item.id}')">
                     <i class="fas fa-edit"></i>
                 </button>
@@ -490,6 +490,14 @@ function createItemCard(item) {
             <div class="item-detail">
                 <i class="fas fa-boxes"></i>
                 <span>数量：<span class="item-quantity">${item.quantity} ${item.unit}</span></span>
+                <div class="quantity-controls">
+                    <button class="quantity-btn decrease" onclick="adjustQuantity('${item.id}', -1)" title="减少库存">
+                        <i class="fas fa-minus"></i>
+                    </button>
+                    <button class="quantity-btn increase" onclick="adjustQuantity('${item.id}', 1)" title="增加库存">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
             </div>
             <div class="item-detail">
                 <i class="fas fa-calendar-alt"></i>
@@ -500,10 +508,24 @@ function createItemCard(item) {
             </div>
             <div class="item-detail">
                 <i class="fas fa-exclamation-triangle"></i>
-                <span>库存阈值：${item.threshold} ${item.unit}</span>
+                <span>库存阈值：${item.threshold} ${item.unit} | 提醒：${itemExpiryWarningDays}天前</span>
             </div>
         </div>
     `;
+    
+    // 添加移动端点击事件
+    card.addEventListener('click', function(e) {
+        // 如果点击的是按钮，不触发卡片点击事件
+        if (e.target.closest('.action-btn') || e.target.closest('.quantity-btn')) {
+            return;
+        }
+        
+        // 切换操作按钮的显示状态
+        const actions = document.getElementById(`actions-${item.id}`);
+        if (actions) {
+            actions.classList.toggle('mobile-visible');
+        }
+    });
     
     return card;
 }
@@ -516,11 +538,13 @@ function updateStats() {
     
     const categoryItems = items.filter(item => item.category === currentCategory);
     const today = new Date();
-    const warningDate = new Date();
-    warningDate.setDate(today.getDate() + settings.expiryWarningDays);
     
     const alertCount = categoryItems.filter(item => {
         const expiryDate = new Date(item.expiry);
+        const itemWarningDays = item.expiryWarningDays || 7;
+        const warningDate = new Date();
+        warningDate.setDate(today.getDate() + itemWarningDays);
+        
         return item.quantity <= item.threshold || expiryDate <= warningDate;
     }).length;
     
@@ -548,12 +572,14 @@ function loadSummaryView() {
 
 function updateSummaryStats() {
     const today = new Date();
-    const warningDate = new Date();
-    warningDate.setDate(today.getDate() + settings.expiryWarningDays);
     
     const totalCount = items.length;
     const alertCount = items.filter(item => {
         const expiryDate = new Date(item.expiry);
+        const itemWarningDays = item.expiryWarningDays || 7;
+        const warningDate = new Date();
+        warningDate.setDate(today.getDate() + itemWarningDays);
+        
         return item.quantity <= item.threshold || expiryDate <= warningDate;
     }).length;
     
@@ -597,6 +623,7 @@ function openEditModal(itemId) {
     document.getElementById('itemUnit').value = item.unit;
     document.getElementById('itemExpiry').value = item.expiry;
     document.getElementById('itemThreshold').value = item.threshold;
+    document.getElementById('itemExpiryWarningDays').value = item.expiryWarningDays || 7;
     document.getElementById('itemCategory').value = item.category;
     
     loadQuickSelectItems();
@@ -635,6 +662,7 @@ function selectQuickItem(presetItem) {
     document.getElementById('itemName').value = presetItem.name;
     document.getElementById('itemUnit').value = presetItem.unit;
     document.getElementById('itemThreshold').value = presetItem.threshold;
+    document.getElementById('itemExpiryWarningDays').value = presetItem.expiryWarningDays || 7;
     document.getElementById('itemExpiry').value = formatDateForInput(expiryDate);
     document.getElementById('itemQuantity').value = presetItem.quantity;
 }
@@ -647,7 +675,8 @@ function saveItem(e) {
         quantity: parseInt(document.getElementById('itemQuantity').value),
         unit: document.getElementById('itemUnit').value,
         expiry: document.getElementById('itemExpiry').value,
-        threshold: parseInt(document.getElementById('itemThreshold').value) || settings.defaultThreshold,
+        threshold: parseInt(document.getElementById('itemThreshold').value) || 5,
+        expiryWarningDays: parseInt(document.getElementById('itemExpiryWarningDays').value) || 7,
         category: document.getElementById('itemCategory').value
     };
     
@@ -679,6 +708,77 @@ function saveItem(e) {
     }, 100);
 }
 
+function adjustQuantity(itemId, change) {
+    const item = items.find(i => i.id === itemId);
+    if (!item) return;
+    
+    const newQuantity = item.quantity + change;
+    if (newQuantity < 0) {
+        alert('库存不能小于0');
+        return;
+    }
+    
+    const action = change > 0 ? '增加' : '减少';
+    const confirmMessage = `确定要${action}《${item.name}》的库存吗？\n\n当前库存：${item.quantity} ${item.unit}\n${action}后：${newQuantity} ${item.unit}`;
+    
+    if (confirm(confirmMessage)) {
+        item.quantity = newQuantity;
+        saveToStorage();
+        
+        // 重新加载当前分类或汇总视图
+        if (currentCategory === 'all-summary') {
+            loadSummaryView();
+        } else {
+            loadCurrentCategory();
+        }
+        
+        // Update notifications
+        setTimeout(() => {
+            notificationManager.checkAndShowNotifications();
+        }, 100);
+        
+        // 显示成功消息
+        showQuantityAdjustMessage(item.name, action, newQuantity, item.unit);
+    }
+}
+
+function showQuantityAdjustMessage(itemName, action, newQuantity, unit) {
+    const messageEl = document.createElement('div');
+    messageEl.className = 'quantity-adjust-message';
+    messageEl.innerHTML = `
+        <i class="fas fa-check-circle"></i>
+        <span>《${itemName}》库存已${action}至 ${newQuantity} ${unit}</span>
+    `;
+    
+    messageEl.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #4CAF50;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        z-index: 10000;
+        font-size: 14px;
+        max-width: 300px;
+        word-wrap: break-word;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        animation: slideInFromTop 0.3s ease;
+    `;
+    
+    document.body.appendChild(messageEl);
+    
+    setTimeout(() => {
+        if (messageEl.parentNode) {
+            messageEl.style.animation = 'slideOutToTop 0.3s ease';
+            setTimeout(() => messageEl.remove(), 300);
+        }
+    }, 2000);
+}
+
 function deleteItem(itemId) {
     if (confirm('确定要删除这个物品吗？')) {
         items = items.filter(item => item.id !== itemId);
@@ -699,8 +799,6 @@ function deleteItem(itemId) {
 }
 
 function openSettingsModal() {
-    document.getElementById('defaultThreshold').value = settings.defaultThreshold;
-    document.getElementById('expiryWarningDays').value = settings.expiryWarningDays;
     document.getElementById('enableNotifications').checked = settings.enableNotifications;
     settingsModal.classList.add('active');
 }
@@ -711,8 +809,6 @@ function closeSettingsModal() {
 
 function saveSettings() {
     settings = {
-        defaultThreshold: parseInt(document.getElementById('defaultThreshold').value),
-        expiryWarningDays: parseInt(document.getElementById('expiryWarningDays').value),
         enableNotifications: document.getElementById('enableNotifications').checked
     };
     
@@ -728,8 +824,6 @@ function saveSettings() {
 function resetSettings() {
     if (confirm('确定要重置所有设置为默认值吗？')) {
         settings = {
-            defaultThreshold: 5,
-            expiryWarningDays: 7,
             enableNotifications: true
         };
         
@@ -745,8 +839,6 @@ function resetSettings() {
 }
 
 function loadSettings() {
-    document.getElementById('defaultThreshold').value = settings.defaultThreshold;
-    document.getElementById('expiryWarningDays').value = settings.expiryWarningDays;
     document.getElementById('enableNotifications').checked = settings.enableNotifications;
 }
 
@@ -781,4 +873,527 @@ setInterval(() => {
     if (settings.enableNotifications) {
         notificationManager.checkAndShowNotifications();
     }
-}, 60000); // Check every minute 
+}, 60000); // Check every minute
+
+// Memory Card Game
+class MemoryCardGame {
+    constructor() {
+        this.currentLevel = 1;
+        this.maxLevel = 4;
+        this.unlockedLevels = JSON.parse(localStorage.getItem('gameUnlockedLevels')) || [1];
+        this.gameData = {
+            1: { size: 3, pairs: 4 },
+            2: { size: 4, pairs: 8 },
+            3: { size: 5, pairs: 12 },
+            4: { size: 6, pairs: 18 }
+        };
+        this.cards = [];
+        this.flippedCards = [];
+        this.matchedPairs = 0;
+        this.isGameActive = false;
+        this.gameProgress = this.loadGameProgress();
+        
+        // 游戏图案库 - 水果、食物、动物、植物等
+        this.patterns = [
+            '🍎', '🍌', '🍇', '🍓', '🍑', '🍊', '🥝', '🍍', '🥭', '🍉',
+            '🍞', '🥐', '🥖', '🧀', '🥚', '🥓', '🥨', '🍔', '🍕', '🌭',
+            '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐸', '🐵',
+            '🌺', '🌻', '🌷', '🌹', '🌸', '🌼', '🌿', '🍀', '🌱', '🌳',
+            '🦋', '🐝', '🐞', '🦜', '🐠', '🐡', '🐬', '🦀', '🦞', '🐙'
+        ];
+        
+        this.initGame();
+    }
+
+    initGame() {
+        // 绑定事件监听器
+        document.getElementById('gameBtn').addEventListener('click', () => this.showGame());
+        document.getElementById('backToAppBtn').addEventListener('click', () => this.hideGame());
+        document.getElementById('backToLevelsFromGameBtn').addEventListener('click', () => this.backToLevels());
+        
+        // 关卡选择事件
+        document.querySelectorAll('.level-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const level = parseInt(e.currentTarget.dataset.level);
+                if (this.unlockedLevels.includes(level)) {
+                    this.startLevel(level);
+                }
+            });
+        });
+        
+        // 胜利界面事件
+        document.getElementById('nextLevelBtn').addEventListener('click', () => this.nextLevel());
+        document.getElementById('backToLevelsBtn').addEventListener('click', () => this.showLevelSelection());
+        
+        this.updateLevelButtons();
+    }
+
+    showGame() {
+        document.getElementById('gameOverlay').style.display = 'flex';
+        this.showLevelSelection();
+    }
+
+    hideGame() {
+        // 如果正在游戏中，保存进度
+        if (this.isGameActive && this.cards.length > 0) {
+            this.saveGameProgress();
+        }
+        
+        document.getElementById('gameOverlay').style.display = 'none';
+    }
+
+    backToLevels() {
+        // 如果正在游戏中，保存进度
+        if (this.isGameActive && this.cards.length > 0) {
+            this.saveGameProgress();
+        }
+        
+        // 返回关卡选择界面
+        this.showLevelSelection();
+    }
+
+    showLevelSelection() {
+        document.getElementById('levelSelection').style.display = 'block';
+        document.getElementById('gameBoard').style.display = 'none';
+        document.getElementById('winScreen').style.display = 'none';
+        this.updateLevelButtons();
+        
+        // 检查是否有保存的游戏进度
+        if (this.gameProgress) {
+            this.showProgressDialog();
+        }
+    }
+
+    showProgressDialog() {
+        const levelNames = { 1: '第1关 (3×3)', 2: '第2关 (4×4)', 3: '第3关 (5×5)', 4: '第4关 (6×6)' };
+        const levelName = levelNames[this.gameProgress.currentLevel];
+        
+        if (confirm(`检测到您有未完成的游戏：${levelName}\n已匹配：${this.gameProgress.matchedPairs}对\n是否继续之前的游戏？`)) {
+            this.continueGame();
+        } else {
+            this.clearGameProgress();
+        }
+    }
+
+    continueGame() {
+        // 显示游戏界面
+        document.getElementById('levelSelection').style.display = 'none';
+        document.getElementById('gameBoard').style.display = 'flex';
+        document.getElementById('winScreen').style.display = 'none';
+        
+        // 恢复游戏进度
+        if (this.restoreGameProgress()) {
+            const levelNames = { 1: '第1关 (3×3)', 2: '第2关 (4×4)', 3: '第3关 (5×5)', 4: '第4关 (6×6)' };
+            document.getElementById('gameLevel').textContent = levelNames[this.currentLevel];
+        }
+    }
+
+    updateLevelButtons() {
+        document.querySelectorAll('.level-btn').forEach(btn => {
+            const level = parseInt(btn.dataset.level);
+            const isUnlocked = this.unlockedLevels.includes(level);
+            
+            btn.disabled = !isUnlocked;
+            const statusElement = btn.querySelector('.level-status');
+            if (isUnlocked) {
+                statusElement.textContent = '🔓';
+                statusElement.className = 'level-status unlocked';
+            } else {
+                statusElement.textContent = '🔒';
+                statusElement.className = 'level-status locked';
+            }
+        });
+    }
+
+    startLevel(level) {
+        this.currentLevel = level;
+        this.resetGame();
+        this.generateCards();
+        this.renderGame();
+        
+        // 更新UI
+        document.getElementById('levelSelection').style.display = 'none';
+        document.getElementById('gameBoard').style.display = 'flex';
+        document.getElementById('winScreen').style.display = 'none';
+        
+        const levelNames = { 1: '第1关 (3×3)', 2: '第2关 (4×4)', 3: '第3关 (5×5)', 4: '第4关 (6×6)' };
+        document.getElementById('gameLevel').textContent = levelNames[level];
+        
+        this.updateScore();
+        this.isGameActive = true;
+    }
+
+    generateCards() {
+        const { size, pairs } = this.gameData[this.currentLevel];
+        const totalCards = size * size;
+        
+        // 每次都随机选择不同的图案
+        const shuffledPatterns = this.shuffleArray([...this.patterns]);
+        const selectedPatterns = shuffledPatterns.slice(0, pairs);
+        
+        // 创建成对的卡牌
+        const cardPatterns = [...selectedPatterns, ...selectedPatterns];
+        
+        // 如果卡牌总数为奇数，添加一张特殊卡牌
+        if (totalCards % 2 === 1) {
+            cardPatterns.push('⭐');
+        }
+        
+        // 随机打乱卡牌位置
+        this.cards = this.shuffleArray(cardPatterns).slice(0, totalCards);
+        this.matchedPairs = 0;
+        this.flippedCards = [];
+    }
+
+    shuffleArray(array) {
+        const shuffled = [...array];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
+    }
+
+    renderGame() {
+        const { size } = this.gameData[this.currentLevel];
+        const cardsGrid = document.getElementById('cardsGrid');
+        
+        // 设置网格类名
+        cardsGrid.className = `cards-grid grid-${size}x${size}`;
+        cardsGrid.innerHTML = '';
+        
+        this.cards.forEach((pattern, index) => {
+            const cardElement = document.createElement('div');
+            cardElement.className = 'memory-card';
+            cardElement.dataset.index = index;
+            cardElement.dataset.pattern = pattern;
+            
+            cardElement.innerHTML = `
+                <div class="card-face card-back">
+                    <i class="fas fa-question"></i>
+                </div>
+                <div class="card-face card-front">
+                    ${pattern}
+                </div>
+            `;
+            
+            cardElement.addEventListener('click', () => this.flipCard(index));
+            cardsGrid.appendChild(cardElement);
+        });
+    }
+
+    flipCard(index) {
+        if (!this.isGameActive) return;
+        
+        const cardElement = document.querySelector(`[data-index="${index}"]`);
+        const pattern = cardElement.dataset.pattern;
+        
+        // 强制检查：如果已经匹配成功，绝不允许再次翻转
+        if (cardElement.classList.contains('matched') || 
+            cardElement.classList.contains('matched-final') ||
+            cardElement.dataset.matched === 'true' || 
+            cardElement.dataset.matched === 'final' ||
+            cardElement._isMatched === true) {
+            console.log('卡牌已匹配，无法翻转 - 最终匹配状态');
+            return;
+        }
+        
+        // 检查卡牌是否已经翻开
+        if (cardElement.classList.contains('flipped')) {
+            return;
+        }
+        
+        // 检查是否已经有两张卡牌翻开
+        if (this.flippedCards.length >= 2) {
+            return;
+        }
+        
+        // 翻开卡牌
+        cardElement.classList.add('flipped');
+        this.flippedCards.push({ index, pattern, element: cardElement });
+        
+        // 检查匹配
+        if (this.flippedCards.length === 2) {
+            this.checkMatch();
+        }
+    }
+
+    lockCardAsMatched(cardElement, pattern) {
+        // 完全重写卡牌HTML，只显示正面，移除所有翻转逻辑
+        cardElement.innerHTML = `
+            <div class="card-face card-front card-matched">
+                ${pattern}
+            </div>
+        `;
+        
+        // 移除所有可能影响的类
+        cardElement.className = 'memory-card matched-final';
+        
+        // 设置样式确保显示正常
+        cardElement.style.transform = 'none';
+        cardElement.style.pointerEvents = 'none';
+        cardElement.style.opacity = '0.9';
+        
+        // 标记为最终匹配状态
+        cardElement.dataset.matched = 'final';
+        cardElement._isMatched = true;
+        
+        console.log('卡牌已锁定为匹配状态:', pattern);
+    }
+
+    checkMatch() {
+        const [card1, card2] = this.flippedCards;
+        
+        setTimeout(() => {
+            if (card1.pattern === card2.pattern) {
+                // 匹配成功 - 直接重写HTML结构，强制显示正面
+                this.lockCardAsMatched(card1.element, card1.pattern);
+                this.lockCardAsMatched(card2.element, card2.pattern);
+                
+                this.matchedPairs++;
+                this.updateScore();
+                
+                // 自动保存进度
+                this.saveGameProgress();
+                
+                console.log(`匹配成功！图案: ${card1.pattern}, 已匹配对数: ${this.matchedPairs}`);
+                
+                // 检查游戏是否完成
+                this.checkGameComplete();
+            } else {
+                // 匹配失败，翻回背面
+                card1.element.classList.remove('flipped');
+                card2.element.classList.remove('flipped');
+            }
+            
+            this.flippedCards = [];
+        }, 1000);
+    }
+
+    checkGameComplete() {
+        const { pairs } = this.gameData[this.currentLevel];
+        const totalCards = this.cards.length;
+        const expectedMatches = totalCards % 2 === 0 ? pairs : pairs; // 处理奇数卡牌情况
+        
+        if (this.matchedPairs >= expectedMatches) {
+            this.isGameActive = false;
+            // 关卡完成，清除当前关卡进度
+            this.clearGameProgress();
+            setTimeout(() => {
+                this.showWinScreen();
+            }, 500);
+        }
+    }
+
+    showWinScreen() {
+        const isLastLevel = this.currentLevel === this.maxLevel;
+        const nextLevel = this.currentLevel + 1;
+        
+        // 解锁下一关
+        if (!isLastLevel && !this.unlockedLevels.includes(nextLevel)) {
+            this.unlockedLevels.push(nextLevel);
+            localStorage.setItem('gameUnlockedLevels', JSON.stringify(this.unlockedLevels));
+        }
+        
+        // 更新胜利界面
+        if (isLastLevel) {
+            document.getElementById('winTitle').textContent = '恭喜小香香通关！';
+            document.getElementById('winMessage').textContent = '太棒了！您已经完成了所有关卡！';
+            document.getElementById('nextLevelBtn').style.display = 'none';
+        } else {
+            document.getElementById('winTitle').textContent = '恭喜通关！';
+            document.getElementById('winMessage').textContent = '太棒了！继续挑战下一关吧！';
+            document.getElementById('nextLevelBtn').style.display = 'inline-block';
+        }
+        
+        document.getElementById('winScreen').style.display = 'flex';
+        
+        // 播放烟花效果
+        if (isLastLevel) {
+            this.playFireworks();
+        }
+    }
+
+    playFireworks() {
+        const container = document.getElementById('fireworksContainer');
+        container.innerHTML = '';
+        
+        // 创建多个烟花
+        for (let i = 0; i < 15; i++) {
+            setTimeout(() => {
+                this.createFirework(container);
+            }, i * 200);
+        }
+    }
+
+    createFirework(container) {
+        const colors = ['#ff6b9d', '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+        const firework = document.createElement('div');
+        firework.className = 'firework';
+        firework.style.left = Math.random() * 100 + '%';
+        firework.style.background = colors[Math.floor(Math.random() * colors.length)];
+        
+        container.appendChild(firework);
+        
+        // 爆炸效果
+        setTimeout(() => {
+            this.createFireworkParticles(container, firework.offsetLeft, 100);
+            firework.remove();
+        }, 300);
+    }
+
+    createFireworkParticles(container, x, y) {
+        const colors = ['#ff6b9d', '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+        
+        for (let i = 0; i < 12; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'firework-particle';
+            particle.style.left = x + 'px';
+            particle.style.top = y + 'px';
+            particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+            
+            const angle = (i * 30) * Math.PI / 180;
+            const distance = 50 + Math.random() * 100;
+            const dx = Math.cos(angle) * distance;
+            const dy = Math.sin(angle) * distance;
+            
+            particle.style.setProperty('--dx', dx + 'px');
+            particle.style.setProperty('--dy', dy + 'px');
+            
+            container.appendChild(particle);
+            
+            setTimeout(() => {
+                particle.remove();
+            }, 3000);
+        }
+    }
+
+    nextLevel() {
+        if (this.currentLevel < this.maxLevel) {
+            this.startLevel(this.currentLevel + 1);
+        }
+    }
+
+    updateScore() {
+        const { pairs } = this.gameData[this.currentLevel];
+        document.getElementById('gameScore').textContent = `匹配: ${this.matchedPairs}/${pairs}`;
+    }
+
+    resetGame() {
+        this.cards = [];
+        this.flippedCards = [];
+        this.matchedPairs = 0;
+        this.isGameActive = false;
+        
+        const cardsGrid = document.getElementById('cardsGrid');
+        if (cardsGrid) {
+            // 清除所有卡牌和内联样式
+            const cards = cardsGrid.querySelectorAll('.memory-card');
+            cards.forEach(card => {
+                card.style.transform = '';
+                card.style.pointerEvents = '';
+                card.classList.remove('flipped', 'matched', 'permanently-flipped');
+                card.removeAttribute('data-matched');
+            });
+            cardsGrid.innerHTML = '';
+        }
+        
+        const fireworksContainer = document.getElementById('fireworksContainer');
+        if (fireworksContainer) {
+            fireworksContainer.innerHTML = '';
+        }
+        
+        console.log('游戏重置完成');
+    }
+
+    // 游戏进度保存和加载功能
+    saveGameProgress() {
+        const progress = {
+            currentLevel: this.currentLevel,
+            cards: this.cards,
+            matchedPairs: this.matchedPairs,
+            matchedCards: [],
+            timestamp: Date.now()
+        };
+        
+        // 保存已匹配的卡牌信息
+        const cardsGrid = document.getElementById('cardsGrid');
+        if (cardsGrid) {
+            const matchedCards = cardsGrid.querySelectorAll('.matched-final');
+            matchedCards.forEach((card, index) => {
+                progress.matchedCards.push({
+                    index: card.dataset.index,
+                    pattern: card.dataset.pattern
+                });
+            });
+        }
+        
+        localStorage.setItem('memoryGameProgress', JSON.stringify(progress));
+        console.log('游戏进度已保存');
+    }
+
+    loadGameProgress() {
+        const saved = localStorage.getItem('memoryGameProgress');
+        if (saved) {
+            try {
+                return JSON.parse(saved);
+            } catch (e) {
+                console.log('加载游戏进度失败:', e);
+            }
+        }
+        return null;
+    }
+
+    restoreGameProgress() {
+        if (!this.gameProgress) return false;
+        
+        // 检查进度是否太旧（超过24小时）
+        const timeLimit = 24 * 60 * 60 * 1000; // 24小时
+        if (Date.now() - this.gameProgress.timestamp > timeLimit) {
+            localStorage.removeItem('memoryGameProgress');
+            this.gameProgress = null;
+            return false;
+        }
+        
+        // 恢复游戏状态
+        this.currentLevel = this.gameProgress.currentLevel;
+        this.cards = this.gameProgress.cards;
+        this.matchedPairs = this.gameProgress.matchedPairs;
+        
+        // 重新渲染游戏
+        this.renderGame();
+        
+        // 恢复已匹配的卡牌状态
+        setTimeout(() => {
+            this.gameProgress.matchedCards.forEach(cardInfo => {
+                const cardElement = document.querySelector(`[data-index="${cardInfo.index}"]`);
+                if (cardElement) {
+                    this.lockCardAsMatched(cardElement, cardInfo.pattern);
+                }
+            });
+        }, 100);
+        
+        this.updateScore();
+        this.isGameActive = true;
+        
+        console.log('游戏进度已恢复');
+        return true;
+    }
+
+    clearGameProgress() {
+        localStorage.removeItem('memoryGameProgress');
+        this.gameProgress = null;
+        console.log('游戏进度已清除');
+    }
+}
+
+// 初始化游戏
+let memoryGame;
+
+// 在页面加载完成后初始化游戏
+document.addEventListener('DOMContentLoaded', function() {
+    // 等待其他初始化完成后再初始化游戏
+    setTimeout(() => {
+        memoryGame = new MemoryCardGame();
+    }, 100);
+}); 

@@ -44,6 +44,10 @@
                         <i class="fas fa-plus"></i>
                         添加物品
                     </button>
+                    <button class="btn btn-game" id="gameBtn">
+                        <i class="fas fa-gamepad"></i>
+                        Game
+                    </button>
                     <button class="btn btn-secondary" id="settingsBtn">
                         <i class="fas fa-cog"></i>
                     </button>
@@ -237,9 +241,15 @@
                         <label for="itemExpiry">保质期</label>
                         <input type="date" id="itemExpiry" required>
                     </div>
-                    <div class="form-group">
-                        <label for="itemThreshold">库存提醒阈值</label>
-                        <input type="number" id="itemThreshold" min="0" placeholder="低于此数量时提醒">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="itemThreshold">库存提醒阈值</label>
+                            <input type="number" id="itemThreshold" min="0" placeholder="低于此数量时提醒" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="itemExpiryWarningDays">提醒天数</label>
+                            <input type="number" id="itemExpiryWarningDays" min="0" placeholder="提前几天提醒" required>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="itemCategory">分类</label>
@@ -287,24 +297,88 @@
                 </div>
                 <div class="settings-content">
                     <div class="setting-item">
-                        <label for="defaultThreshold">默认库存提醒阈值</label>
-                        <input type="number" id="defaultThreshold" min="0" value="5">
-                    </div>
-                    <div class="setting-item">
-                        <label for="expiryWarningDays">保质期提醒天数</label>
-                        <input type="number" id="expiryWarningDays" min="0" value="7">
-                        <span class="setting-help">提前多少天提醒保质期即将到期</span>
-                    </div>
-                    <div class="setting-item">
                         <label>
                             <input type="checkbox" id="enableNotifications" checked>
                             启用提醒通知
                         </label>
                     </div>
+                    <div class="setting-item">
+                        <p class="setting-help">提示：库存提醒阈值和保质期提醒天数现在可以为每个物品单独设置，在添加或编辑物品时进行配置。</p>
+                    </div>
                     <div class="setting-actions">
                         <button class="btn btn-secondary" id="resetSettings">重置设置</button>
                         <button class="btn btn-primary" id="saveSettings">保存设置</button>
                     </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Memory Card Game -->
+        <div class="game-overlay" id="gameOverlay" style="display: none;">
+            <div class="game-container">
+                <div class="game-header">
+                    <h2 id="gameTitle">记忆翻牌游戏</h2>
+                    <div class="game-controls">
+                        <span id="gameLevel">第1关 (3×3)</span>
+                        <span id="gameScore">匹配: 0/0</span>
+                        <button class="btn btn-game" id="backToLevelsFromGameBtn">
+                            <i class="fas fa-list"></i>
+                            关卡
+                        </button>
+                        <button class="btn btn-secondary" id="backToAppBtn">
+                            <i class="fas fa-arrow-left"></i>
+                            返回香仓
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Level Selection -->
+                <div class="level-selection" id="levelSelection">
+                    <h3>选择关卡</h3>
+                    <div class="level-grid">
+                        <button class="level-btn" data-level="1">
+                            <span class="level-number">第1关</span>
+                            <span class="level-size">3×3</span>
+                            <span class="level-status unlocked">🔓</span>
+                        </button>
+                        <button class="level-btn" data-level="2">
+                            <span class="level-number">第2关</span>
+                            <span class="level-size">4×4</span>
+                            <span class="level-status locked">🔒</span>
+                        </button>
+                        <button class="level-btn" data-level="3">
+                            <span class="level-number">第3关</span>
+                            <span class="level-size">5×5</span>
+                            <span class="level-status locked">🔒</span>
+                        </button>
+                        <button class="level-btn" data-level="4">
+                            <span class="level-number">第4关</span>
+                            <span class="level-size">6×6</span>
+                            <span class="level-status locked">🔒</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Game Board -->
+                <div class="game-board" id="gameBoard" style="display: none;">
+                    <div class="cards-grid" id="cardsGrid">
+                        <!-- Game cards will be generated here -->
+                    </div>
+                </div>
+                
+                <!-- Win Screen -->
+                <div class="win-screen" id="winScreen" style="display: none;">
+                    <div class="win-content">
+                        <h2 id="winTitle">恭喜通关！</h2>
+                        <div class="win-stars">⭐⭐⭐</div>
+                        <p id="winMessage">太棒了！继续挑战下一关吧！</p>
+                        <div class="win-actions">
+                            <button class="btn btn-primary" id="nextLevelBtn">下一关</button>
+                            <button class="btn btn-secondary" id="backToLevelsBtn">返回关卡</button>
+                        </div>
+                    </div>
+                    <!-- 烟花效果容器 -->
+                    <div class="fireworks-container" id="fireworksContainer"></div>
                 </div>
             </div>
         </div>
