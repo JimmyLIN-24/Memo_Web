@@ -51,6 +51,40 @@ class NotificationManager {
         this.notifications.set(id, notification);
     }
 
+    showCombined(id, type, title, details, icon = '⚠️') {
+        // Remove existing notification for this item if it exists
+        if (this.notifications.has(id)) {
+            this.hide(id);
+        }
+
+        const notification = document.createElement('div');
+        notification.className = `notification-item ${type}`;
+        notification.dataset.id = id;
+        
+        notification.innerHTML = `
+            <div class="notification-main">
+                <div class="notification-icon">${icon}</div>
+                <div class="notification-content">
+                    <div class="notification-title">${title}</div>
+                </div>
+                <button class="notification-close" onclick="notificationManager.hide('${id}')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="notification-details">${details.replace(/\n/g, '<br>')}</div>
+        `;
+        
+        // 添加点击展开/收起功能
+        notification.addEventListener('click', (e) => {
+            if (!e.target.closest('.notification-close')) {
+                notification.classList.toggle('expanded');
+            }
+        });
+
+        this.container.appendChild(notification);
+        this.notifications.set(id, notification);
+    }
+
     hide(id) {
         const notification = this.notifications.get(id);
         if (notification) {
@@ -79,6 +113,8 @@ class NotificationManager {
         const today = new Date();
 
         items.forEach(item => {
+            let notifications = [];
+            
             // 只对有保质期的物品进行过期检查
             if (item.expiry) {
                 const expiryDate = new Date(item.expiry);
@@ -89,34 +125,52 @@ class NotificationManager {
 
                 // Check for expired items
                 if (expiryDate < today) {
-                    this.show(
-                        `expired-${item.id}`,
-                        'error',
-                        `${item.name} 已过期`,
-                        `该物品已于 ${formatDate(item.expiry)} 过期，请及时处理`,
-                        '🚨'
-                    );
+                    notifications.push({
+                        type: 'error',
+                        title: '已过期',
+                        message: `该物品已于 ${formatDate(item.expiry)} 过期，请及时处理`,
+                        icon: '🚨'
+                    });
                 }
                 // Check for expiring items
                 else if (expiryDate <= warningDate) {
-                    this.show(
-                        `expiring-${item.id}`,
-                        'warning',
-                        `${item.name} 即将过期`,
-                        `还有 ${daysUntilExpiry} 天过期（${formatDate(item.expiry)}）`,
-                        '⏰'
-                    );
+                    notifications.push({
+                        type: 'warning',
+                        title: '即将过期',
+                        message: `还有 ${daysUntilExpiry} 天过期（${formatDate(item.expiry)}）`,
+                        icon: '⏰'
+                    });
                 }
             }
 
             // Check for low stock
             if (item.quantity <= item.threshold) {
-                this.show(
-                    `lowstock-${item.id}`,
-                    'warning',
-                    `${item.name} 库存不足`,
-                    `当前库存：${item.quantity} ${item.unit}，建议补货`,
-                    '📦'
+                notifications.push({
+                    type: 'warning',
+                    title: '库存不足',
+                    message: `当前库存：${item.quantity} ${item.unit}，建议补货`,
+                    icon: '📦'
+                });
+            }
+
+            // 合并同一物品的通知
+            if (notifications.length > 0) {
+                const mainNotification = notifications[0];
+                const hasMultiple = notifications.length > 1;
+                
+                let title = `${item.name} ${mainNotification.title}`;
+                if (hasMultiple) {
+                    title += ` +${notifications.length - 1}`;
+                }
+                
+                let details = notifications.map(n => n.message).join('\n');
+                
+                this.showCombined(
+                    `combined-${item.id}`,
+                    mainNotification.type,
+                    title,
+                    details,
+                    mainNotification.icon
                 );
             }
         });
@@ -526,7 +580,7 @@ function createItemCard(item) {
             </div>
             <div class="item-detail">
                 <i class="fas fa-exclamation-triangle"></i>
-                <span>库存阈值：${item.threshold} ${item.unit} | 提醒：${itemExpiryWarningDays}天前</span>
+                <span>库存阈值：${item.threshold} ${item.unit}${item.expiry ? ` | 提醒：${item.expiryWarningDays || 7}天前` : ''}</span>
             </div>
         </div>
     `;
@@ -932,6 +986,38 @@ function toggleMobileActions(itemId) {
     if (actions) {
         actions.classList.toggle('mobile-visible');
     }
+}
+
+// 滚动隐藏头部功能
+function initScrollHeader() {
+    let lastScrollY = window.scrollY;
+    let isHeaderHidden = false;
+    const header = document.querySelector('.app-header');
+    const mainContent = document.querySelector('.main-content');
+    
+    function handleScroll() {
+        const currentScrollY = window.scrollY;
+        const scrollingDown = currentScrollY > lastScrollY;
+        const shouldHideHeader = scrollingDown && currentScrollY > 100;
+        
+        if (shouldHideHeader && !isHeaderHidden) {
+            header.classList.add('hidden');
+            isHeaderHidden = true;
+        } else if (!scrollingDown && isHeaderHidden) {
+            header.classList.remove('hidden');
+            isHeaderHidden = false;
+        }
+        
+        lastScrollY = currentScrollY;
+    }
+    
+    // 监听主内容区域的滚动
+    if (mainContent) {
+        mainContent.addEventListener('scroll', handleScroll);
+    }
+    
+    // 也监听窗口滚动作为备用
+    window.addEventListener('scroll', handleScroll);
 }
 
 // Auto-refresh notifications periodically
@@ -1462,4 +1548,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
         memoryGame = new MemoryCardGame();
     }, 100);
+    
+    // 初始化滚动头部隐藏功能
+    initScrollHeader();
 }); 
