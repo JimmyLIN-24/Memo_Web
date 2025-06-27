@@ -79,31 +79,34 @@ class NotificationManager {
         const today = new Date();
 
         items.forEach(item => {
-            const expiryDate = new Date(item.expiry);
-            const daysUntilExpiry = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
-            const itemWarningDays = item.expiryWarningDays || 7;
-            const warningDate = new Date();
-            warningDate.setDate(today.getDate() + itemWarningDays);
+            // 只对有保质期的物品进行过期检查
+            if (item.expiry) {
+                const expiryDate = new Date(item.expiry);
+                const daysUntilExpiry = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+                const itemWarningDays = item.expiryWarningDays || 7;
+                const warningDate = new Date();
+                warningDate.setDate(today.getDate() + itemWarningDays);
 
-            // Check for expired items
-            if (expiryDate < today) {
-                this.show(
-                    `expired-${item.id}`,
-                    'error',
-                    `${item.name} 已过期`,
-                    `该物品已于 ${formatDate(item.expiry)} 过期，请及时处理`,
-                    '🚨'
-                );
-            }
-            // Check for expiring items
-            else if (expiryDate <= warningDate) {
-                this.show(
-                    `expiring-${item.id}`,
-                    'warning',
-                    `${item.name} 即将过期`,
-                    `还有 ${daysUntilExpiry} 天过期（${formatDate(item.expiry)}）`,
-                    '⏰'
-                );
+                // Check for expired items
+                if (expiryDate < today) {
+                    this.show(
+                        `expired-${item.id}`,
+                        'error',
+                        `${item.name} 已过期`,
+                        `该物品已于 ${formatDate(item.expiry)} 过期，请及时处理`,
+                        '🚨'
+                    );
+                }
+                // Check for expiring items
+                else if (expiryDate <= warningDate) {
+                    this.show(
+                        `expiring-${item.id}`,
+                        'warning',
+                        `${item.name} 即将过期`,
+                        `还有 ${daysUntilExpiry} 天过期（${formatDate(item.expiry)}）`,
+                        '⏰'
+                    );
+                }
             }
 
             // Check for low stock
@@ -450,25 +453,41 @@ function renderItems(itemsToRender) {
 
 function createItemCard(item) {
     const today = new Date();
-    const expiryDate = new Date(item.expiry);
-    const daysUntilExpiry = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
-    const itemExpiryWarningDays = item.expiryWarningDays || 7;
-    
     let statusClass = '';
     let statusBadge = '';
     let expiryClass = '';
+    let expiryText = '';
+    let daysUntilExpiry = 0;
     
-    if (expiryDate < today) {
-        statusClass = 'alert';
-        statusBadge = '<div class="status-badge expired">已过期</div>';
-        expiryClass = 'expired';
-    } else if (daysUntilExpiry <= itemExpiryWarningDays) {
-        statusClass = 'warning';
-        statusBadge = '<div class="status-badge expiring">即将过期</div>';
-        expiryClass = 'warning';
-    } else if (item.quantity <= item.threshold) {
-        statusClass = 'warning';
-        statusBadge = '<div class="status-badge low-stock">库存不足</div>';
+    // 处理保质期逻辑
+    if (item.expiry) {
+        const expiryDate = new Date(item.expiry);
+        daysUntilExpiry = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+        const itemExpiryWarningDays = item.expiryWarningDays || 7;
+        
+        if (expiryDate < today) {
+            statusClass = 'alert';
+            statusBadge = '<div class="status-badge expired">已过期</div>';
+            expiryClass = 'expired';
+        } else if (daysUntilExpiry <= itemExpiryWarningDays) {
+            statusClass = 'warning';
+            statusBadge = '<div class="status-badge expiring">即将过期</div>';
+            expiryClass = 'warning';
+        }
+        
+        expiryText = `保质期：${formatDate(item.expiry)} ${daysUntilExpiry > 0 ? `(${daysUntilExpiry}天)` : ''}`;
+    } else {
+        expiryText = '无保质期限制';
+    }
+    
+    // 检查库存不足
+    if (item.quantity <= item.threshold) {
+        if (!statusClass) {
+            statusClass = 'warning';
+            statusBadge = '<div class="status-badge low-stock">库存不足</div>';
+        } else {
+            statusBadge += '<div class="status-badge low-stock">库存不足</div>';
+        }
     }
     
     const card = document.createElement('div');
@@ -502,8 +521,7 @@ function createItemCard(item) {
             <div class="item-detail">
                 <i class="fas fa-calendar-alt"></i>
                 <span class="item-expiry ${expiryClass}">
-                    保质期：${formatDate(item.expiry)}
-                    ${daysUntilExpiry > 0 ? `(${daysUntilExpiry}天)` : ''}
+                    ${expiryText}
                 </span>
             </div>
             <div class="item-detail">
@@ -520,10 +538,9 @@ function createItemCard(item) {
             return;
         }
         
-        // 切换操作按钮的显示状态
-        const actions = document.getElementById(`actions-${item.id}`);
-        if (actions) {
-            actions.classList.toggle('mobile-visible');
+        // 在移动设备上切换操作按钮的显示状态
+        if (window.innerWidth <= 768) {
+            toggleMobileActions(item.id);
         }
     });
     
@@ -540,12 +557,22 @@ function updateStats() {
     const today = new Date();
     
     const alertCount = categoryItems.filter(item => {
-        const expiryDate = new Date(item.expiry);
-        const itemWarningDays = item.expiryWarningDays || 7;
-        const warningDate = new Date();
-        warningDate.setDate(today.getDate() + itemWarningDays);
+        // 库存不足检查
+        if (item.quantity <= item.threshold) {
+            return true;
+        }
         
-        return item.quantity <= item.threshold || expiryDate <= warningDate;
+        // 只对有保质期的物品进行过期检查
+        if (item.expiry) {
+            const expiryDate = new Date(item.expiry);
+            const itemWarningDays = item.expiryWarningDays || 7;
+            const warningDate = new Date();
+            warningDate.setDate(today.getDate() + itemWarningDays);
+            
+            return expiryDate <= warningDate;
+        }
+        
+        return false;
     }).length;
     
     totalItems.textContent = categoryItems.length;
@@ -575,12 +602,22 @@ function updateSummaryStats() {
     
     const totalCount = items.length;
     const alertCount = items.filter(item => {
-        const expiryDate = new Date(item.expiry);
-        const itemWarningDays = item.expiryWarningDays || 7;
-        const warningDate = new Date();
-        warningDate.setDate(today.getDate() + itemWarningDays);
+        // 库存不足检查
+        if (item.quantity <= item.threshold) {
+            return true;
+        }
         
-        return item.quantity <= item.threshold || expiryDate <= warningDate;
+        // 只对有保质期的物品进行过期检查
+        if (item.expiry) {
+            const expiryDate = new Date(item.expiry);
+            const itemWarningDays = item.expiryWarningDays || 7;
+            const warningDate = new Date();
+            warningDate.setDate(today.getDate() + itemWarningDays);
+            
+            return expiryDate <= warningDate;
+        }
+        
+        return false;
     }).length;
     
     // 更新汇总标签的统计
@@ -621,7 +658,7 @@ function openEditModal(itemId) {
     document.getElementById('itemName').value = item.name;
     document.getElementById('itemQuantity').value = item.quantity;
     document.getElementById('itemUnit').value = item.unit;
-    document.getElementById('itemExpiry').value = item.expiry;
+    document.getElementById('itemExpiry').value = item.expiry || '';
     document.getElementById('itemThreshold').value = item.threshold;
     document.getElementById('itemExpiryWarningDays').value = item.expiryWarningDays || 7;
     document.getElementById('itemCategory').value = item.category;
@@ -670,14 +707,27 @@ function selectQuickItem(presetItem) {
 function saveItem(e) {
     e.preventDefault();
     
+    const name = document.getElementById('itemName').value.trim();
+    const quantity = parseInt(document.getElementById('itemQuantity').value);
+    const unit = document.getElementById('itemUnit').value.trim();
+    const expiry = document.getElementById('itemExpiry').value;
+    const threshold = parseInt(document.getElementById('itemThreshold').value);
+    const category = document.getElementById('itemCategory').value;
+    
+    // 验证必填字段
+    if (!name || !quantity || !unit || !threshold || !category) {
+        alert('请填写所有必填字段（物品名称、数量、单位、库存阈值、分类）');
+        return;
+    }
+    
     const itemData = {
-        name: document.getElementById('itemName').value,
-        quantity: parseInt(document.getElementById('itemQuantity').value),
-        unit: document.getElementById('itemUnit').value,
-        expiry: document.getElementById('itemExpiry').value,
-        threshold: parseInt(document.getElementById('itemThreshold').value) || 5,
-        expiryWarningDays: parseInt(document.getElementById('itemExpiryWarningDays').value) || 7,
-        category: document.getElementById('itemCategory').value
+        name: name,
+        quantity: quantity,
+        unit: unit,
+        expiry: expiry || null, // 保质期为空时设为null
+        threshold: threshold,
+        expiryWarningDays: expiry ? (parseInt(document.getElementById('itemExpiryWarningDays').value) || 7) : null,
+        category: category
     };
     
     if (editingItemId) {
@@ -866,6 +916,22 @@ function formatDateForInput(date) {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+}
+
+// 手机端操作按钮切换显示函数
+function toggleMobileActions(itemId) {
+    // 先隐藏所有其他已显示的操作按钮
+    document.querySelectorAll('.item-actions.mobile-visible').forEach(actions => {
+        if (actions.id !== `actions-${itemId}`) {
+            actions.classList.remove('mobile-visible');
+        }
+    });
+    
+    // 切换当前点击的物品的操作按钮
+    const actions = document.getElementById(`actions-${itemId}`);
+    if (actions) {
+        actions.classList.toggle('mobile-visible');
+    }
 }
 
 // Auto-refresh notifications periodically
