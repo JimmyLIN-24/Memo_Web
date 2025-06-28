@@ -216,13 +216,17 @@
         <!-- Add/Edit Item Modal -->
         <div class="modal-overlay" id="itemModal">
             <div class="modal-content">
-                <div class="modal-header">
+                <div class="modal-header modal-header-fixed">
                     <h3 id="modalTitle">添加物品</h3>
-                    <button class="modal-close" id="closeModal">
-                        <i class="fas fa-times"></i>
-                    </button>
+                    <div class="modal-header-actions">
+                        <button type="submit" class="btn btn-primary" id="saveBtn" form="itemForm">保存</button>
+                        <button class="modal-close" id="closeModal">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
                 </div>
-                <form class="modal-form" id="itemForm">
+                <div class="modal-body">
+                    <form class="modal-form" id="itemForm">
                     <!-- Quick Select Section -->
                     <div class="quick-select-section" id="quickSelectSection">
                         <h4>快速选择常用物品</h4>
@@ -295,9 +299,9 @@
                     </div>
                     <div class="form-actions">
                         <button type="button" class="btn btn-secondary" id="cancelBtn">取消</button>
-                        <button type="submit" class="btn btn-primary" id="saveBtn">保存</button>
                     </div>
                 </form>
+                </div>
             </div>
         </div>
 
