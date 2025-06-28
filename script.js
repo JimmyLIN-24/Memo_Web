@@ -650,8 +650,12 @@ function createItemCard(item) {
             </div>
             <div class="item-detail">
                 <i class="fas fa-exclamation-triangle"></i>
-                <span>库存阈值：${item.threshold} ${item.unit}${item.expiry ? ` | 提醒：${item.expiryWarningDays || 7}天前` : ''}</span>
+                <span>库存阈值：${item.threshold} ${item.unit}</span>
             </div>
+            ${item.location ? `<div class="item-detail">
+                <i class="fas fa-map-marker-alt"></i>
+                <span>存放地点：${item.location}</span>
+            </div>` : ''}
         </div>
     `;
     
@@ -786,6 +790,7 @@ function openEditModal(itemId) {
     document.getElementById('itemThreshold').value = item.threshold;
     document.getElementById('itemExpiryWarningDays').value = item.expiryWarningDays || 7;
     document.getElementById('itemCategory').value = item.category;
+    document.getElementById('itemLocation').value = item.location || '';
     
     loadQuickSelectItems();
     itemModal.classList.add('active');
@@ -837,6 +842,7 @@ function saveItem(e) {
     const expiry = document.getElementById('itemExpiry').value;
     const threshold = parseInt(document.getElementById('itemThreshold').value);
     const category = document.getElementById('itemCategory').value;
+    const location = document.getElementById('itemLocation').value.trim();
     
     // 验证必填字段
     if (!name || !quantity || !unit || !threshold || !category) {
@@ -851,7 +857,8 @@ function saveItem(e) {
         expiry: expiry || null, // 保质期为空时设为null
         threshold: threshold,
         expiryWarningDays: expiry ? (parseInt(document.getElementById('itemExpiryWarningDays').value) || 7) : null,
-        category: category
+        category: category,
+        location: location || null // 存放地点为空时设为null
     };
     
     if (editingItemId) {
@@ -1069,6 +1076,8 @@ function initScrollHeader() {
     const headerTop = document.getElementById('headerTop');
     const headerMiddle = document.getElementById('headerMiddle');
     const headerBottom = document.getElementById('headerBottom');
+    const appHeader = document.querySelector('.app-header');
+    const notificationsContainer = document.getElementById('notificationsContainer');
     const mainContent = document.querySelector('.main-content');
     const sidebar = document.querySelector('.sidebar');
     
@@ -1130,6 +1139,9 @@ function initScrollHeader() {
                     headerTop.classList.remove('hidden');
                 }
             }
+            
+            // 动态更新提醒框位置
+            updateNotificationsPosition();
         });
         
         // 设置延迟重置滚动状态
@@ -1142,6 +1154,18 @@ function initScrollHeader() {
         
         lastScrollY = currentScrollY;
     }
+    
+    // 更新提醒框位置
+    function updateNotificationsPosition() {
+        if (appHeader && notificationsContainer) {
+            const headerRect = appHeader.getBoundingClientRect();
+            const headerHeight = headerRect.height;
+            document.documentElement.style.setProperty('--header-bottom-height', `${headerHeight}px`);
+        }
+    }
+    
+    // 初始化提醒框位置
+    updateNotificationsPosition();
     
     // 节流处理的滚动监听
     function throttledHandleScroll() {
@@ -1162,6 +1186,11 @@ function initScrollHeader() {
     
     // 也监听窗口滚动作为备用
     window.addEventListener('scroll', throttledHandleScroll);
+    
+    // 监听窗口大小变化，更新提醒框位置
+    window.addEventListener('resize', () => {
+        setTimeout(updateNotificationsPosition, 100);
+    });
 }
 
 // Auto-refresh notifications periodically
