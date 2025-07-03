@@ -15,6 +15,7 @@ if ('serviceWorker' in navigator) {
 let items = JSON.parse(localStorage.getItem('inventoryItems')) || [];
 let currentCategory = 'all-summary';
 let editingItemId = null;
+let currentSearchQuery = '';
 let settings = JSON.parse(localStorage.getItem('appSettings')) || {
     enableNotifications: true
 };
@@ -187,8 +188,6 @@ class NotificationManager {
                 const expiryDate = new Date(item.expiry);
                 const daysUntilExpiry = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
                 const itemWarningDays = item.expiryWarningDays || 7;
-                const warningDate = new Date();
-                warningDate.setDate(today.getDate() + itemWarningDays);
 
                 // Check for expired items
                 if (expiryDate < today) {
@@ -200,22 +199,25 @@ class NotificationManager {
                     });
                 }
                 // Check for expiring items
-                else if (expiryDate <= warningDate) {
+                else if (itemWarningDays === 0 ? daysUntilExpiry === 0 : daysUntilExpiry <= itemWarningDays) {
+                    const warningMessage = daysUntilExpiry === 0 ? '今天过期' : `还有 ${daysUntilExpiry} 天过期（${formatDate(item.expiry)}）`;
                     notifications.push({
                         type: 'warning',
-                        title: '即将过期',
-                        message: `还有 ${daysUntilExpiry} 天过期（${formatDate(item.expiry)}）`,
+                        title: daysUntilExpiry === 0 ? '今天过期' : '即将过期',
+                        message: warningMessage,
                         icon: '⏰'
                     });
                 }
             }
 
             // Check for low stock
-            if (item.quantity <= item.threshold) {
+            // 当阈值为0时，只有库存为0时才提醒；当阈值大于0时，库存小于等于阈值时提醒
+            if ((item.threshold === 0 && item.quantity === 0) || (item.threshold > 0 && item.quantity <= item.threshold)) {
+                const stockMessage = item.quantity === 0 ? '已用完，请及时补货' : `当前库存：${item.quantity} ${item.unit}，建议补货`;
                 notifications.push({
                     type: 'warning',
-                    title: '库存不足',
-                    message: `当前库存：${item.quantity} ${item.unit}，建议补货`,
+                    title: item.quantity === 0 ? '库存已用完' : '库存不足',
+                    message: stockMessage,
                     icon: '📦'
                 });
             }
@@ -548,10 +550,33 @@ function setupEventListeners() {
             }
         });
     });
+    
+    // Search functionality
+    const searchInput = document.getElementById('searchInput');
+    const searchClear = document.getElementById('searchClear');
+    
+    if (searchInput) {
+        searchInput.addEventListener('input', handleSearch);
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                clearSearch();
+            }
+        });
+    }
+    
+    if (searchClear) {
+        searchClear.addEventListener('click', clearSearch);
+    }
 }
 
 function loadCurrentCategory() {
-    const categoryItems = items.filter(item => item.category === currentCategory);
+    let categoryItems = items.filter(item => item.category === currentCategory);
+    
+    // Apply search filter if there's a search query
+    if (currentSearchQuery) {
+        categoryItems = filterItems(categoryItems, currentSearchQuery);
+    }
+    
     categoryTitle.textContent = categoryNames[currentCategory];
     
     if (categoryItems.length === 0) {
@@ -605,12 +630,13 @@ function createItemCard(item) {
     }
     
     // 检查库存不足
-    if (item.quantity <= item.threshold) {
+    if ((item.threshold === 0 && item.quantity === 0) || (item.threshold > 0 && item.quantity <= item.threshold)) {
+        const stockLabel = item.quantity === 0 ? '库存已用完' : '库存不足';
         if (!statusClass) {
             statusClass = 'warning';
-            statusBadge = '<div class="status-badge low-stock">库存不足</div>';
+            statusBadge = `<div class="status-badge low-stock">${stockLabel}</div>`;
         } else {
-            statusBadge += '<div class="status-badge low-stock">库存不足</div>';
+            statusBadge += `<div class="status-badge low-stock">${stockLabel}</div>`;
         }
     }
     
@@ -650,7 +676,7 @@ function createItemCard(item) {
             </div>
             <div class="item-detail">
                 <i class="fas fa-exclamation-triangle"></i>
-                <span>库存阈值：${item.threshold} ${item.unit}</span>
+                <span>库存阈值：${item.threshold === 0 ? '用完时提醒' : `${item.threshold} ${item.unit}`}</span>
             </div>
             ${item.location ? `<div class="item-detail">
                 <i class="fas fa-map-marker-alt"></i>
@@ -686,18 +712,20 @@ function updateStats() {
     
     const alertCount = categoryItems.filter(item => {
         // 库存不足检查
-        if (item.quantity <= item.threshold) {
+        if ((item.threshold === 0 && item.quantity === 0) || (item.threshold > 0 && item.quantity <= item.threshold)) {
             return true;
         }
         
         // 只对有保质期的物品进行过期检查
         if (item.expiry) {
             const expiryDate = new Date(item.expiry);
+            const daysUntilExpiry = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
             const itemWarningDays = item.expiryWarningDays || 7;
-            const warningDate = new Date();
-            warningDate.setDate(today.getDate() + itemWarningDays);
             
-            return expiryDate <= warningDate;
+            // 已过期或即将过期
+            if (expiryDate < today || (itemWarningDays === 0 ? daysUntilExpiry === 0 : daysUntilExpiry <= itemWarningDays)) {
+                return true;
+            }
         }
         
         return false;
@@ -711,15 +739,22 @@ function updateStats() {
 }
 
 function loadSummaryView() {
+    let itemsToShow = items;
+    
+    // Apply search filter if there's a search query
+    if (currentSearchQuery) {
+        itemsToShow = filterItems(items, currentSearchQuery);
+    }
+    
     categoryTitle.textContent = '全部物品汇总';
     
-    if (items.length === 0) {
+    if (itemsToShow.length === 0) {
         itemsGrid.style.display = 'none';
         emptyState.style.display = 'block';
     } else {
         itemsGrid.style.display = 'grid';
         emptyState.style.display = 'none';
-        renderItems(items);
+        renderItems(itemsToShow);
     }
     
     updateSummaryStats();
@@ -731,18 +766,20 @@ function updateSummaryStats() {
     const totalCount = items.length;
     const alertCount = items.filter(item => {
         // 库存不足检查
-        if (item.quantity <= item.threshold) {
+        if ((item.threshold === 0 && item.quantity === 0) || (item.threshold > 0 && item.quantity <= item.threshold)) {
             return true;
         }
         
         // 只对有保质期的物品进行过期检查
         if (item.expiry) {
             const expiryDate = new Date(item.expiry);
+            const daysUntilExpiry = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
             const itemWarningDays = item.expiryWarningDays || 7;
-            const warningDate = new Date();
-            warningDate.setDate(today.getDate() + itemWarningDays);
             
-            return expiryDate <= warningDate;
+            // 已过期或即将过期
+            if (expiryDate < today || (itemWarningDays === 0 ? daysUntilExpiry === 0 : daysUntilExpiry <= itemWarningDays)) {
+                return true;
+            }
         }
         
         return false;
@@ -788,7 +825,7 @@ function openEditModal(itemId) {
     document.getElementById('itemUnit').value = item.unit;
     document.getElementById('itemExpiry').value = item.expiry || '';
     document.getElementById('itemThreshold').value = item.threshold;
-    document.getElementById('itemExpiryWarningDays').value = item.expiryWarningDays || 7;
+    document.getElementById('itemExpiryWarningDays').value = item.expiryWarningDays !== null ? item.expiryWarningDays : '';
     document.getElementById('itemCategory').value = item.category;
     document.getElementById('itemLocation').value = item.location || '';
     
@@ -840,14 +877,24 @@ function saveItem(e) {
     const quantity = parseInt(document.getElementById('itemQuantity').value);
     const unit = document.getElementById('itemUnit').value.trim();
     const expiry = document.getElementById('itemExpiry').value;
-    const threshold = parseInt(document.getElementById('itemThreshold').value);
+    const thresholdInput = document.getElementById('itemThreshold').value;
+    const warningDaysInput = document.getElementById('itemExpiryWarningDays').value;
     const category = document.getElementById('itemCategory').value;
     const location = document.getElementById('itemLocation').value.trim();
     
     // 验证必填字段
-    if (!name || !quantity || !unit || !threshold || !category) {
-        alert('请填写所有必填字段（物品名称、数量、单位、库存阈值、分类）');
+    if (!name || isNaN(quantity) || !unit || !category) {
+        alert('请填写所有必填字段（物品名称、数量、单位、分类）');
         return;
+    }
+    
+    // 处理库存阈值：如果不填则默认为0
+    const threshold = thresholdInput === '' ? 0 : parseInt(thresholdInput);
+    
+    // 处理提醒天数：如果有保质期且不填提醒天数，则默认为7天；如果无保质期则为null
+    let expiryWarningDays = null;
+    if (expiry) {
+        expiryWarningDays = warningDaysInput === '' ? 7 : parseInt(warningDaysInput);
     }
     
     const itemData = {
@@ -856,7 +903,7 @@ function saveItem(e) {
         unit: unit,
         expiry: expiry || null, // 保质期为空时设为null
         threshold: threshold,
-        expiryWarningDays: expiry ? (parseInt(document.getElementById('itemExpiryWarningDays').value) || 7) : null,
+        expiryWarningDays: expiryWarningDays,
         category: category,
         location: location || null // 存放地点为空时设为null
     };
@@ -1724,4 +1771,76 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 初始化滚动头部隐藏功能
     initScrollHeader();
-}); 
+});
+
+// Search functionality
+function handleSearch(e) {
+    const query = e.target.value.trim();
+    currentSearchQuery = query;
+    
+    // Show/hide clear button
+    const searchClear = document.getElementById('searchClear');
+    if (searchClear) {
+        searchClear.style.display = query ? 'block' : 'none';
+    }
+    
+    // Update the view
+    if (currentCategory === 'all-summary') {
+        loadSummaryView();
+    } else {
+        loadCurrentCategory();
+    }
+}
+
+function clearSearch() {
+    const searchInput = document.getElementById('searchInput');
+    const searchClear = document.getElementById('searchClear');
+    
+    if (searchInput) {
+        searchInput.value = '';
+    }
+    
+    if (searchClear) {
+        searchClear.style.display = 'none';
+    }
+    
+    currentSearchQuery = '';
+    
+    // Update the view
+    if (currentCategory === 'all-summary') {
+        loadSummaryView();
+    } else {
+        loadCurrentCategory();
+    }
+}
+
+function filterItems(items, query) {
+    if (!query) return items;
+    
+    const lowerQuery = query.toLowerCase();
+    
+    return items.filter(item => {
+        // 搜索物品名称
+        if (item.name.toLowerCase().includes(lowerQuery)) {
+            return true;
+        }
+        
+        // 搜索存放地点
+        if (item.location && item.location.toLowerCase().includes(lowerQuery)) {
+            return true;
+        }
+        
+        // 搜索单位
+        if (item.unit && item.unit.toLowerCase().includes(lowerQuery)) {
+            return true;
+        }
+        
+        // 搜索分类名称
+        const categoryName = categoryNames[item.category];
+        if (categoryName && categoryName.toLowerCase().includes(lowerQuery)) {
+            return true;
+        }
+        
+        return false;
+    });
+} 

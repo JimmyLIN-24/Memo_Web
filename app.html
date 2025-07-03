@@ -195,6 +195,17 @@
                             </span>
                         </div>
                     </div>
+                    
+                    <!-- Search Box -->
+                    <div class="search-container">
+                        <div class="search-input-wrapper">
+                            <i class="fas fa-search search-icon"></i>
+                            <input type="text" id="searchInput" placeholder="搜索物品名称、存放地点..." autocomplete="off">
+                            <button class="search-clear" id="searchClear" style="display: none;">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
 
                     <!-- Items Grid -->
                     <div class="items-grid" id="itemsGrid">
@@ -258,12 +269,12 @@
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="itemThreshold">库存提醒阈值</label>
-                            <input type="number" id="itemThreshold" min="0" placeholder="低于此数量时提醒" required>
+                            <label for="itemThreshold">库存提醒阈值（可选）</label>
+                            <input type="number" id="itemThreshold" min="0" placeholder="低于此数量时提醒，0表示用完时提醒">
                         </div>
                         <div class="form-group">
-                            <label for="itemExpiryWarningDays">提醒天数</label>
-                            <input type="number" id="itemExpiryWarningDays" min="0" placeholder="提前几天提醒" required>
+                            <label for="itemExpiryWarningDays">提醒天数（可选）</label>
+                            <input type="number" id="itemExpiryWarningDays" min="0" placeholder="提前几天提醒，0表示到期时提醒">
                         </div>
                     </div>
                     <div class="form-group">
