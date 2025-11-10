@@ -21,12 +21,12 @@ let settings = JSON.parse(localStorage.getItem('appSettings')) || {
 };
 let cafeVisits = JSON.parse(localStorage.getItem('cafeVisits')) || [];
 
-const coffeeMethods = [
+const defaultCoffeeMethods = [
     {
         id: 'kono',
         icon: '🍃',
         name: 'Kono滴滤法',
-        updated: '09/11/2025',
+        updated: '2025-09-11',
         summary: '经典三段式注水，层次分明，风味均衡。',
         notes: '传统的日式滴滤技巧，采用滴水式闷蒸，口感醇厚顺滑。',
         ratingLabel: '复杂度',
@@ -44,7 +44,7 @@ const coffeeMethods = [
         id: 'iced-pour',
         icon: '🧊',
         name: '冰手冲（速冷）',
-        updated: '09/11/2025',
+        updated: '2025-09-11',
         summary: '热水萃取后快速冰镇，锁住香气，带来鲜活酸质。',
         notes: '热水萃取后直接落冰，保留热咖啡香气也拥有冰凉口感。',
         ratingLabel: '清爽度',
@@ -62,7 +62,7 @@ const coffeeMethods = [
         id: 'stir',
         icon: '🌪️',
         name: '搅拌手冲法',
-        updated: '09/11/2025',
+        updated: '2025-09-11',
         summary: '注水后轻轻搅拌，让萃取更均匀、口感更饱满。',
         notes: '带有搅拌技巧的手冲方法，以增强萃取与厚实度。',
         ratingLabel: '均衡度',
@@ -80,7 +80,7 @@ const coffeeMethods = [
         id: 'french-press',
         icon: '🫙',
         name: '法压壶',
-        updated: '09/10/2025',
+        updated: '2025-09-10',
         summary: '浸泡式萃取，油脂丰富，适合坚果、巧克力风味。',
         notes: '粗磨豆子浸泡四分钟，按压后直接享受满杯厚实油脂。',
         ratingLabel: '油脂感',
@@ -98,7 +98,7 @@ const coffeeMethods = [
         id: 'espresso',
         icon: '⚡',
         name: '意式浓缩',
-        updated: '09/08/2025',
+        updated: '2025-09-08',
         summary: '高压短时间萃取，适合做拿铁/美式的基底。',
         notes: '18g粉量搭配1:2比例，保留甜感并带出明亮尾韵。',
         ratingLabel: '浓郁度',
@@ -113,6 +113,9 @@ const coffeeMethods = [
         ]
     }
 ];
+const COFFEE_METHODS_STORAGE_KEY = 'coffeeMethodsCustom';
+const METHOD_METRIC_HINTS = ['温度', '研磨度', '时间', '粉量', '比例', '终液量'];
+let coffeeMethods = loadCoffeeMethods();
 
 // Notification System
 class NotificationManager {
@@ -1880,23 +1883,121 @@ function initCoffeeHub() {
     const tabButtons = document.querySelectorAll('.coffee-tab-btn');
     const cafeVisitForm = document.getElementById('cafeVisitForm');
     const cafeVisitList = document.getElementById('cafeVisitList');
+    const cancelCafeEditBtn = document.getElementById('cancelCafeEditBtn');
+    const resetCafeFormBtn = document.getElementById('resetCafeFormBtn');
+    const methodFormWrapper = document.getElementById('coffeeMethodFormWrapper');
+    const methodForm = document.getElementById('coffeeMethodForm');
+    const methodMetricsContainer = document.getElementById('methodMetricsContainer');
+    const addMethodBtn = document.getElementById('addMethodBtn');
+    const cancelMethodEditBtn = document.getElementById('cancelMethodEdit');
+    const methodFormCancelBtn = document.getElementById('methodFormCancelBtn');
+    const addMethodMetricBtn = document.getElementById('addMethodMetric');
+    const methodFormTitle = document.getElementById('methodFormTitle');
+    const methodSubmitBtn = document.getElementById('methodSubmitBtn');
+    const methodIconInput = document.getElementById('methodIcon');
+    const methodUpdatedInput = document.getElementById('methodUpdated');
+    const methodNameInput = document.getElementById('methodName');
+    const methodSummaryInput = document.getElementById('methodSummary');
+    const methodNotesInput = document.getElementById('methodNotes');
+    const methodRatingLabelInput = document.getElementById('methodRatingLabel');
+    const methodRatingInput = document.getElementById('methodRating');
+    const methodIdField = document.getElementById('methodIdField');
+    const coffeeMethodList = document.getElementById('coffeeMethodList');
     
     if (!coffeeOverlay || !coffeeBtn) {
         return;
     }
     
-    const openOverlay = () => {
-        coffeeOverlay.classList.add('active');
+    const addMethodMetricRow = (metric = {}) => {
+        if (!methodMetricsContainer) return;
+        const row = document.createElement('div');
+        row.className = 'method-metric-row';
+        row.innerHTML = `
+            <input type="text" class="method-metric-label" placeholder="参数名称" value="${sanitizeHTML(metric.label || '')}">
+            <input type="text" class="method-metric-value" placeholder="数据" value="${sanitizeHTML(metric.value || '')}">
+            <button type="button" class="method-metric-remove" data-remove-metric title="删除参数">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        methodMetricsContainer.appendChild(row);
     };
     
-    const closeOverlay = () => {
-        coffeeOverlay.classList.remove('active');
+    const updateMethodFormHeader = (isEditing) => {
+        if (methodFormTitle) {
+            methodFormTitle.textContent = isEditing ? '编辑冲煮方式' : '新增冲煮方式';
+        }
+        if (methodSubmitBtn) {
+            methodSubmitBtn.textContent = isEditing ? '保存修改' : '保存方式';
+        }
+        if (cancelMethodEditBtn) {
+            cancelMethodEditBtn.classList.toggle('hidden', !isEditing);
+        }
     };
+    
+    const populateMethodForm = (method = null) => {
+        if (!methodForm || !methodMetricsContainer) return;
+        methodForm.reset();
+        methodForm.dataset.editId = method?.id || '';
+        methodIdField.value = method?.id || '';
+        
+        methodIconInput.value = method?.icon || '';
+        methodUpdatedInput.value = methodUpdatedToInputValue(method?.updated);
+        methodNameInput.value = method?.name || '';
+        methodSummaryInput.value = method?.summary || '';
+        methodNotesInput.value = method?.notes || '';
+        methodRatingLabelInput.value = method?.ratingLabel || '';
+        methodRatingInput.value = method?.rating || '';
+        
+        methodMetricsContainer.innerHTML = '';
+        const metrics = method && Array.isArray(method.metrics) && method.metrics.length
+            ? method.metrics
+            : getDefaultMethodMetrics();
+        metrics.forEach(metric => addMethodMetricRow(metric));
+        updateMethodFormHeader(Boolean(method));
+    };
+    
+    const showMethodForm = (method = null) => {
+        if (!methodFormWrapper) return;
+        methodFormWrapper.classList.remove('hidden');
+        populateMethodForm(method);
+        methodFormWrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+    
+    const hideMethodForm = () => {
+        if (!methodFormWrapper) return;
+        methodFormWrapper.classList.add('hidden');
+        populateMethodForm();
+    };
+    
+    const collectMethodFormValues = () => {
+        if (!methodForm) return null;
+        const metricRows = methodMetricsContainer
+            ? Array.from(methodMetricsContainer.querySelectorAll('.method-metric-row'))
+            : [];
+        const metrics = metricRows.map(row => {
+            const label = row.querySelector('.method-metric-label')?.value.trim() || '';
+            const value = row.querySelector('.method-metric-value')?.value.trim() || '';
+            return label || value ? { label, value } : null;
+        }).filter(Boolean);
+        
+        return {
+            id: methodForm.dataset.editId || `coffee-${Date.now()}`,
+            icon: methodIconInput.value.trim() || '☕',
+            name: methodNameInput.value.trim(),
+            updated: normalizeMethodDate(methodUpdatedInput.value),
+            summary: methodSummaryInput.value.trim(),
+            notes: methodNotesInput.value.trim(),
+            ratingLabel: methodRatingLabelInput.value.trim() || '评分',
+            rating: parseInt(methodRatingInput.value, 10) || 0,
+            metrics
+        };
+    };
+    
+    const openOverlay = () => coffeeOverlay.classList.add('active');
+    const closeOverlay = () => coffeeOverlay.classList.remove('active');
     
     coffeeBtn.addEventListener('click', openOverlay);
-    if (coffeeCloseBtn) {
-        coffeeCloseBtn.addEventListener('click', closeOverlay);
-    }
+    coffeeCloseBtn?.addEventListener('click', closeOverlay);
     
     coffeeOverlay.addEventListener('click', (event) => {
         if (event.target === coffeeOverlay) {
@@ -1929,13 +2030,73 @@ function initCoffeeHub() {
         cafeVisitForm.addEventListener('submit', handleCafeVisitSubmit);
     }
     
-    if (cafeVisitList) {
-        cafeVisitList.addEventListener('click', (event) => {
-            const deleteBtn = event.target.closest('[data-delete-visit]');
-            if (!deleteBtn) return;
+    cafeVisitList?.addEventListener('click', (event) => {
+        const deleteBtn = event.target.closest('[data-delete-visit]');
+        if (deleteBtn) {
             deleteCafeVisit(deleteBtn.dataset.deleteVisit);
+            return;
+        }
+        const editBtn = event.target.closest('[data-edit-visit]');
+        if (editBtn) {
+            const visit = cafeVisits.find(item => item.id === editBtn.dataset.editVisit);
+            if (visit) {
+                populateCafeFormForEdit(visit);
+            }
+        }
+    });
+    
+    cancelCafeEditBtn?.addEventListener('click', () => resetCafeForm());
+    resetCafeFormBtn?.addEventListener('click', () => resetCafeForm());
+    
+    if (addMethodBtn) {
+        addMethodBtn.addEventListener('click', () => {
+            showMethodForm();
         });
     }
+    
+    cancelMethodEditBtn?.addEventListener('click', () => {
+        populateMethodForm();
+    });
+    
+    methodFormCancelBtn?.addEventListener('click', () => {
+        hideMethodForm();
+    });
+    
+    addMethodMetricBtn?.addEventListener('click', () => {
+        addMethodMetricRow();
+    });
+    
+    methodMetricsContainer?.addEventListener('click', (event) => {
+        const removeBtn = event.target.closest('[data-remove-metric]');
+        if (removeBtn) {
+            removeBtn.parentElement?.remove();
+        }
+    });
+    
+    methodForm?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const methodData = collectMethodFormValues();
+        if (!methodData || !methodData.name) {
+            return;
+        }
+        upsertCoffeeMethod(methodData);
+        saveCoffeeMethods();
+        renderCoffeeMethods();
+        hideMethodForm();
+    });
+    
+    coffeeMethodList?.addEventListener('click', (event) => {
+        const editBtn = event.target.closest('[data-edit-method]');
+        if (editBtn) {
+            const method = coffeeMethods.find(item => item.id === editBtn.dataset.editMethod);
+            showMethodForm(method || null);
+            return;
+        }
+        const deleteBtn = event.target.closest('[data-delete-method]');
+        if (deleteBtn) {
+            deleteCoffeeMethod(deleteBtn.dataset.deleteMethod);
+        }
+    });
     
     renderCoffeeMethods();
     renderCafeVisits();
@@ -1947,35 +2108,67 @@ function renderCoffeeMethods() {
         return;
     }
     
-    const cards = coffeeMethods.map(method => {
-        const metrics = method.metrics.map(metric => `
-            <div class="method-meta-item">
-                <span>${metric.label}</span>
-                <strong>${metric.value}</strong>
+    if (!Array.isArray(coffeeMethods) || coffeeMethods.length === 0) {
+        list.innerHTML = `
+            <div class="cafe-empty">
+                还没有手冲记录，点击“新增方式”创建你的第一条配方 ☕
             </div>
-        `).join('');
+        `;
+        return;
+    }
+    
+    const cards = coffeeMethods.map(method => {
+        const metrics = Array.isArray(method.metrics) && method.metrics.length
+            ? method.metrics.map(metric => `
+                <div class="method-meta-item">
+                    <span>${sanitizeHTML(metric.label || '')}</span>
+                    <strong>${sanitizeHTML(metric.value || '')}</strong>
+                </div>
+            `).join('')
+            : `
+                <div class="method-meta-item">
+                    <span>参数</span>
+                    <strong>暂无记录</strong>
+                </div>
+            `;
+        
+        const summary = (method.summary ? sanitizeHTML(method.summary) : '写下一句话介绍它吧').replace(/\n/g, '<br>');
+        const notes = (method.notes ? sanitizeHTML(method.notes) : '小技巧、小心得都可以记录在这里～').replace(/\n/g, '<br>');
+        const ratingLabel = sanitizeHTML(method.ratingLabel || '评分');
+        const icon = sanitizeHTML(method.icon || '☕');
+        const dateText = sanitizeHTML(formatMethodDisplayDate(method.updated));
         
         return `
             <article class="coffee-method-card">
                 <div class="method-header">
                     <div class="method-title">
-                        <span class="method-icon">${method.icon}</span>
-                        <h4>${method.name}</h4>
+                        <span class="method-icon">${icon}</span>
+                        <h4>${sanitizeHTML(method.name || '未命名方式')}</h4>
                     </div>
-                    <span class="method-date">${method.updated}</span>
+                    <div class="method-meta-actions">
+                        <span class="method-date">${dateText}</span>
+                        <div class="method-card-actions">
+                            <button class="method-card-btn" data-edit-method="${method.id}" title="编辑冲煮方式">
+                                <i class="fas fa-pen"></i>
+                            </button>
+                            <button class="method-card-btn danger" data-delete-method="${method.id}" title="删除">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <p class="method-summary">${method.summary}</p>
+                <p class="method-summary">${summary}</p>
                 <div class="method-meta-grid">
                     ${metrics}
                 </div>
                 <div class="method-footer">
                     <div class="method-rating-row">
-                        <span>${method.ratingLabel}</span>
-                        <div class="coffee-rating" aria-label="${method.ratingLabel}">
+                        <span>${ratingLabel}</span>
+                        <div class="coffee-rating" aria-label="${ratingLabel}">
                             ${buildRatingStars(method.rating)}
                         </div>
                     </div>
-                    <p class="method-notes">${method.notes}</p>
+                    <p class="method-notes">${notes}</p>
                 </div>
             </article>
         `;
@@ -1988,9 +2181,11 @@ function handleCafeVisitSubmit(event) {
     event.preventDefault();
     const form = event.target;
     const formData = new FormData(form);
+    const editingId = form.dataset.editId || '';
+    const existingIndex = cafeVisits.findIndex(visit => visit.id === editingId);
     
     const visit = {
-        id: `visit-${Date.now()}`,
+        id: editingId || `visit-${Date.now()}`,
         cafeName: getTrimmedFormValue(formData, 'cafeName'),
         visitDatetime: formData.get('visitDatetime'),
         location: getTrimmedFormValue(formData, 'visitLocation'),
@@ -2004,23 +2199,35 @@ function handleCafeVisitSubmit(event) {
         return;
     }
     
-    const finalizeSave = () => {
-        cafeVisits.unshift(visit);
+    const finalizeSave = (imageData) => {
+        if (editingId && existingIndex > -1) {
+            const previous = cafeVisits[existingIndex];
+            cafeVisits[existingIndex] = {
+                ...previous,
+                ...visit,
+                id: editingId,
+                image: typeof imageData === 'string' ? imageData : previous.image
+            };
+        } else {
+            cafeVisits.unshift({
+                ...visit,
+                image: typeof imageData === 'string' ? imageData : ''
+            });
+        }
         saveCafeVisits();
         renderCafeVisits();
-        form.reset();
+        resetCafeForm();
     };
     
     const file = formData.get('visitPhoto');
     if (file && file.size) {
         readFileAsDataURL(file)
             .then((dataUrl) => {
-                visit.image = dataUrl;
-                finalizeSave();
+                finalizeSave(dataUrl);
             })
-            .catch(() => finalizeSave());
+            .catch(() => finalizeSave(null));
     } else {
-        finalizeSave();
+        finalizeSave(null);
     }
 }
 
@@ -2061,6 +2268,10 @@ function renderCafeVisits() {
             ` : ''
         ].join('');
         
+        const notes = visit.notes ? sanitizeHTML(visit.notes).replace(/\n/g, '<br>') : '';
+        const ratingStars = visit.rating ? `<div class="cafe-visit-rating">${buildRatingStars(visit.rating)}</div>` : '';
+        const photo = visit.image ? `<img src="${visit.image}" alt="${sanitizeHTML(visit.cafeName)}" class="cafe-visit-photo" loading="lazy">` : '';
+        
         return `
             <article class="cafe-visit-card">
                 <div class="cafe-visit-card-header">
@@ -2068,21 +2279,199 @@ function renderCafeVisits() {
                         <div class="card-title">${sanitizeHTML(visit.cafeName)}</div>
                         <div class="card-subtitle">${formatVisitDatetime(visit.visitDatetime)}</div>
                     </div>
-                    <button class="visit-delete-btn" data-delete-visit="${visit.id}" title="删除记录">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                    <div class="visit-card-actions">
+                        <button class="visit-edit-btn" data-edit-visit="${visit.id}" title="编辑记录">
+                            <i class="fas fa-pen"></i>
+                        </button>
+                        <button class="visit-delete-btn" data-delete-visit="${visit.id}" title="删除记录">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
                 </div>
                 ${metaBlocks ? `<div class="cafe-visit-meta">${metaBlocks}</div>` : ''}
-                ${visit.image ? `<img src="${visit.image}" alt="${sanitizeHTML(visit.cafeName)}" class="cafe-visit-photo">` : ''}
-                ${visit.notes ? `<p class="cafe-visit-notes">${sanitizeHTML(visit.notes)}</p>` : ''}
-                ${visit.rating ? `<div class="cafe-visit-rating">${buildRatingStars(visit.rating)}</div>` : ''}
+                ${photo}
+                ${notes ? `<p class="cafe-visit-notes">${notes}</p>` : ''}
+                ${ratingStars}
             </article>
         `;
     }).join('');
 }
 
+function loadCoffeeMethods() {
+    try {
+        const stored = JSON.parse(localStorage.getItem(COFFEE_METHODS_STORAGE_KEY));
+        if (Array.isArray(stored)) {
+            return stored.map(normalizeMethodRecord).filter(Boolean);
+        }
+    } catch (error) {
+        console.warn('加载自定义咖啡方式失败', error);
+    }
+    return defaultCoffeeMethods.map(normalizeMethodRecord).filter(Boolean);
+}
+
+function normalizeMethodRecord(method) {
+    if (!method) return null;
+    const metrics = Array.isArray(method.metrics)
+        ? method.metrics.map(item => ({
+            label: item?.label || '',
+            value: item?.value || ''
+        }))
+        : [];
+    
+    return {
+        id: method.id || `coffee-${Date.now()}`,
+        icon: method.icon || '☕',
+        name: method.name || '未命名方式',
+        updated: method.updated || '',
+        summary: method.summary || '',
+        notes: method.notes || '',
+        ratingLabel: method.ratingLabel || '评分',
+        rating: typeof method.rating === 'number' ? method.rating : parseFloat(method.rating) || 0,
+        metrics
+    };
+}
+
+function getDefaultMethodMetrics() {
+    return METHOD_METRIC_HINTS.map(label => ({ label, value: '' }));
+}
+
+function saveCoffeeMethods() {
+    localStorage.setItem(COFFEE_METHODS_STORAGE_KEY, JSON.stringify(coffeeMethods));
+}
+
+function upsertCoffeeMethod(methodData) {
+    const index = coffeeMethods.findIndex(item => item.id === methodData.id);
+    if (index > -1) {
+        coffeeMethods[index] = methodData;
+    } else {
+        coffeeMethods.unshift(methodData);
+    }
+}
+
+function deleteCoffeeMethod(id) {
+    coffeeMethods = coffeeMethods.filter(method => method.id !== id);
+    saveCoffeeMethods();
+    renderCoffeeMethods();
+}
+
+function formatMethodDisplayDate(value) {
+    if (!value) {
+        return '未标注日期';
+    }
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
+        return value;
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return value;
+    }
+    const pad = (num) => String(num).padStart(2, '0');
+    return `${pad(date.getMonth() + 1)}/${pad(date.getDate())}/${date.getFullYear()}`;
+}
+
+function methodUpdatedToInputValue(value) {
+    if (!value) return '';
+    if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
+        return value.slice(0, 10);
+    }
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
+        const [month, day, year] = value.split('/');
+        return `${year}-${month}-${day}`;
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return '';
+    }
+    const pad = (num) => String(num).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function normalizeMethodDate(value) {
+    if (!value) return '';
+    if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
+        return value.slice(0, 10);
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return value;
+    }
+    const pad = (num) => String(num).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function toDatetimeLocalValue(value) {
+    if (!value) return '';
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)) {
+        return value.slice(0, 16);
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return '';
+    }
+    const pad = (num) => String(num).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function resetCafeForm() {
+    const form = document.getElementById('cafeVisitForm');
+    if (!form) return;
+    form.reset();
+    delete form.dataset.editId;
+    updateCafeFormMode(false);
+}
+
+function updateCafeFormMode(isEditing) {
+    const title = document.getElementById('cafeFormTitle');
+    const submitBtn = document.getElementById('cafeFormSubmitBtn');
+    const cancelBtn = document.getElementById('cancelCafeEditBtn');
+    
+    if (title) {
+        title.textContent = isEditing ? '编辑探店记录' : '记录新的探店';
+    }
+    if (submitBtn) {
+        submitBtn.textContent = isEditing ? '保存修改' : '收藏这次探店';
+    }
+    if (cancelBtn) {
+        cancelBtn.classList.toggle('hidden', !isEditing);
+    }
+}
+
+function populateCafeFormForEdit(visit) {
+    const form = document.getElementById('cafeVisitForm');
+    if (!form || !visit) return;
+    
+    form.dataset.editId = visit.id;
+    updateCafeFormMode(true);
+    
+    const fieldMap = {
+        cafeName: visit.cafeName || '',
+        visitLocation: visit.location || '',
+        visitBeans: visit.beans || '',
+        visitRating: visit.rating || '',
+        visitNotes: visit.notes || ''
+    };
+    
+    Object.entries(fieldMap).forEach(([id, value]) => {
+        const field = document.getElementById(id);
+        if (field) {
+            field.value = value;
+        }
+    });
+    
+    const datetimeInput = document.getElementById('visitDatetime');
+    if (datetimeInput) {
+        datetimeInput.value = toDatetimeLocalValue(visit.visitDatetime);
+    }
+    
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 function deleteCafeVisit(id) {
     cafeVisits = cafeVisits.filter(visit => visit.id !== id);
+    const form = document.getElementById('cafeVisitForm');
+    if (form && form.dataset.editId === id) {
+        resetCafeForm();
+    }
     saveCafeVisits();
     renderCafeVisits();
 }

@@ -447,6 +447,12 @@
                             <p class="coffee-section-label">常见冲煮方式</p>
                             <h3>小香香的手冲清单</h3>
                         </div>
+                        <div class="coffee-section-actions">
+                            <button class="pill-btn" id="addMethodBtn">
+                                <i class="fas fa-plus"></i>
+                                新增方式
+                            </button>
+                        </div>
                         <div class="coffee-icon-strip">
                             <span class="coffee-icon-pill">
                                 <i class="fas fa-filter"></i>
@@ -470,6 +476,58 @@
                             </span>
                         </div>
                     </div>
+                    <div class="coffee-method-form-wrapper hidden" id="coffeeMethodFormWrapper">
+                        <form class="coffee-method-form" id="coffeeMethodForm">
+                            <input type="hidden" id="methodIdField">
+                            <div class="form-row form-row-header">
+                                <h4 id="methodFormTitle">新增冲煮方式</h4>
+                                <button type="button" class="link-btn hidden" id="cancelMethodEdit">取消编辑</button>
+                            </div>
+                            <div class="form-row two-cols">
+                                <div>
+                                    <label for="methodIcon">小图标</label>
+                                    <input type="text" id="methodIcon" maxlength="2" placeholder="☕ / 🍃">
+                                </div>
+                                <div>
+                                    <label for="methodUpdated">记录日期</label>
+                                    <input type="date" id="methodUpdated">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <label for="methodName">冲煮名称*</label>
+                                <input type="text" id="methodName" required placeholder="例如：Kono滴滤法">
+                            </div>
+                            <div class="form-row">
+                                <label for="methodSummary">一句话描述</label>
+                                <input type="text" id="methodSummary" placeholder="写下风味或特色亮点">
+                            </div>
+                            <div class="form-row">
+                                <label for="methodNotes">详细备注</label>
+                                <textarea id="methodNotes" rows="2" placeholder="记录手法、风味变化、自己喜欢的节奏..."></textarea>
+                            </div>
+                            <div class="form-row two-cols">
+                                <div>
+                                    <label for="methodRatingLabel">评分标签</label>
+                                    <input type="text" id="methodRatingLabel" placeholder="复杂度 / 均衡度...">
+                                </div>
+                                <div>
+                                    <label for="methodRating">评分 (1-5)</label>
+                                    <input type="number" id="methodRating" min="1" max="5" step="1" placeholder="5">
+                                </div>
+                            </div>
+                            <div class="method-metrics-container" id="methodMetricsContainer">
+                                <!-- dynamic rows -->
+                            </div>
+                            <button type="button" class="method-add-metric" id="addMethodMetric">
+                                <i class="fas fa-plus-circle"></i>
+                                添加参数
+                            </button>
+                            <div class="form-row dual-actions">
+                                <button type="button" class="btn btn-secondary" id="methodFormCancelBtn">收起</button>
+                                <button type="submit" class="btn btn-primary" id="methodSubmitBtn">保存方式</button>
+                            </div>
+                        </form>
+                    </div>
                     <div class="coffee-method-list" id="coffeeMethodList">
                         <!-- Methods will be rendered by JS -->
                     </div>
@@ -484,6 +542,10 @@
                     </div>
                     <div class="journal-grid">
                         <form class="cafe-visit-form" id="cafeVisitForm">
+                            <div class="form-row form-row-header">
+                                <h4 id="cafeFormTitle">记录新的探店</h4>
+                                <button type="button" class="link-btn hidden" id="cancelCafeEditBtn">取消编辑</button>
+                            </div>
                             <div class="form-row">
                                 <label for="cafeName">店名 / 咖啡窗口*</label>
                                 <input type="text" id="cafeName" name="cafeName" placeholder="例如：Seesaw、Manner" required>
@@ -516,8 +578,9 @@
                                 <label for="visitNotes">味道 / 氛围手写</label>
                                 <textarea id="visitNotes" name="visitNotes" rows="3" placeholder="记下风味、店内陈设、和朋友的碎碎念..."></textarea>
                             </div>
-                            <div class="form-row">
-                                <button type="submit" class="btn btn-primary">收藏这次探店</button>
+                            <div class="form-row dual-actions">
+                                <button type="button" class="btn btn-secondary ghost" id="resetCafeFormBtn">清空表单</button>
+                                <button type="submit" class="btn btn-primary" id="cafeFormSubmitBtn">收藏这次探店</button>
                             </div>
                         </form>
                         <div class="cafe-visit-list" id="cafeVisitList">
