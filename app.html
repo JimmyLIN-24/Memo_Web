@@ -55,6 +55,10 @@
                         <i class="fas fa-plus"></i>
                         添加物品
                     </button>
+                    <button class="btn btn-coffee" id="coffeeBtn">
+                        <i class="fas fa-mug-hot"></i>
+                        咖啡角
+                    </button>
                     <button class="btn btn-game" id="gameBtn">
                         <i class="fas fa-gamepad"></i>
                         Game
@@ -410,6 +414,117 @@
                     <!-- 烟花效果容器 -->
                     <div class="fireworks-container" id="fireworksContainer"></div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Coffee Hub -->
+    <div class="coffee-overlay" id="coffeeOverlay">
+        <div class="coffee-panel">
+            <div class="coffee-panel-header">
+                <div class="coffee-panel-title">
+                    <span class="coffee-panel-emoji">☕</span>
+                    咖啡小宇宙
+                </div>
+                <div class="coffee-panel-actions">
+                    <button class="coffee-tab-btn active" data-coffee-tab="methods">
+                        <i class="fas fa-seedling"></i>
+                        冲煮手册
+                    </button>
+                    <button class="coffee-tab-btn" data-coffee-tab="journal">
+                        <i class="fas fa-map-marker-alt"></i>
+                        探店手账
+                    </button>
+                    <button class="coffee-close-btn" id="coffeeCloseBtn" aria-label="关闭咖啡面板">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="coffee-panel-body">
+                <section class="coffee-section" id="coffeeMethodsSection">
+                    <div class="coffee-section-header">
+                        <div>
+                            <p class="coffee-section-label">常见冲煮方式</p>
+                            <h3>小香香的手冲清单</h3>
+                        </div>
+                        <div class="coffee-icon-strip">
+                            <span class="coffee-icon-pill">
+                                <i class="fas fa-filter"></i>
+                                滴滤
+                            </span>
+                            <span class="coffee-icon-pill">
+                                <i class="fas fa-blender"></i>
+                                冰手冲
+                            </span>
+                            <span class="coffee-icon-pill">
+                                <i class="fas fa-mortar-pestle"></i>
+                                法压
+                            </span>
+                            <span class="coffee-icon-pill">
+                                <i class="fas fa-mug-hot"></i>
+                                意式
+                            </span>
+                            <span class="coffee-icon-pill">
+                                <i class="fas fa-coffee"></i>
+                                摩卡
+                            </span>
+                        </div>
+                    </div>
+                    <div class="coffee-method-list" id="coffeeMethodList">
+                        <!-- Methods will be rendered by JS -->
+                    </div>
+                </section>
+
+                <section class="coffee-section hidden" id="cafeJournalSection">
+                    <div class="coffee-section-header">
+                        <div>
+                            <p class="coffee-section-label">Cafe Hopping</p>
+                            <h3>探店记录手账</h3>
+                        </div>
+                    </div>
+                    <div class="journal-grid">
+                        <form class="cafe-visit-form" id="cafeVisitForm">
+                            <div class="form-row">
+                                <label for="cafeName">店名 / 咖啡窗口*</label>
+                                <input type="text" id="cafeName" name="cafeName" placeholder="例如：Seesaw、Manner" required>
+                            </div>
+                            <div class="form-row two-cols">
+                                <div>
+                                    <label for="visitDatetime">日期时间*</label>
+                                    <input type="datetime-local" id="visitDatetime" name="visitDatetime" required>
+                                </div>
+                                <div>
+                                    <label for="visitLocation">地点</label>
+                                    <input type="text" id="visitLocation" name="visitLocation" placeholder="城市 / 商场 / 小巷">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <label for="visitBeans">咖啡 / 豆子品种</label>
+                                <input type="text" id="visitBeans" name="visitBeans" placeholder="耶加? 红蜜? 特色限定?">
+                            </div>
+                            <div class="form-row two-cols">
+                                <div>
+                                    <label for="visitRating">喜爱指数 (1-5)</label>
+                                    <input type="number" id="visitRating" name="visitRating" min="1" max="5" step="0.5" placeholder="4.5">
+                                </div>
+                                <div>
+                                    <label for="visitPhoto">瞬间记录</label>
+                                    <input type="file" id="visitPhoto" name="visitPhoto" accept="image/*">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <label for="visitNotes">味道 / 氛围手写</label>
+                                <textarea id="visitNotes" name="visitNotes" rows="3" placeholder="记下风味、店内陈设、和朋友的碎碎念..."></textarea>
+                            </div>
+                            <div class="form-row">
+                                <button type="submit" class="btn btn-primary">收藏这次探店</button>
+                            </div>
+                        </form>
+                        <div class="cafe-visit-list" id="cafeVisitList">
+                            <!-- Visits will be rendered by JS -->
+                        </div>
+                    </div>
+                </section>
             </div>
         </div>
     </div>

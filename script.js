@@ -19,6 +19,100 @@ let currentSearchQuery = '';
 let settings = JSON.parse(localStorage.getItem('appSettings')) || {
     enableNotifications: true
 };
+let cafeVisits = JSON.parse(localStorage.getItem('cafeVisits')) || [];
+
+const coffeeMethods = [
+    {
+        id: 'kono',
+        icon: '🍃',
+        name: 'Kono滴滤法',
+        updated: '09/11/2025',
+        summary: '经典三段式注水，层次分明，风味均衡。',
+        notes: '传统的日式滴滤技巧，采用滴水式闷蒸，口感醇厚顺滑。',
+        ratingLabel: '复杂度',
+        rating: 5,
+        metrics: [
+            { label: '温度', value: '85°C' },
+            { label: '研磨度', value: '超粗' },
+            { label: '时间', value: '270s' },
+            { label: '粉量', value: '25g' },
+            { label: '比例', value: '1:10' },
+            { label: '终液量', value: '250ml' }
+        ]
+    },
+    {
+        id: 'iced-pour',
+        icon: '🧊',
+        name: '冰手冲（速冷）',
+        updated: '09/11/2025',
+        summary: '热水萃取后快速冰镇，锁住香气，带来鲜活酸质。',
+        notes: '热水萃取后直接落冰，保留热咖啡香气也拥有冰凉口感。',
+        ratingLabel: '清爽度',
+        rating: 4,
+        metrics: [
+            { label: '温度', value: '92°C' },
+            { label: '研磨度', value: '中粗' },
+            { label: '时间', value: '150s' },
+            { label: '粉量', value: '25g' },
+            { label: '比例', value: '1:8' },
+            { label: '终液量', value: '300ml' }
+        ]
+    },
+    {
+        id: 'stir',
+        icon: '🌪️',
+        name: '搅拌手冲法',
+        updated: '09/11/2025',
+        summary: '注水后轻轻搅拌，让萃取更均匀、口感更饱满。',
+        notes: '带有搅拌技巧的手冲方法，以增强萃取与厚实度。',
+        ratingLabel: '均衡度',
+        rating: 4,
+        metrics: [
+            { label: '温度', value: '88°C' },
+            { label: '研磨度', value: '中粗' },
+            { label: '时间', value: '180s' },
+            { label: '粉量', value: '20g' },
+            { label: '比例', value: '1:16' },
+            { label: '终液量', value: '320ml' }
+        ]
+    },
+    {
+        id: 'french-press',
+        icon: '🫙',
+        name: '法压壶',
+        updated: '09/10/2025',
+        summary: '浸泡式萃取，油脂丰富，适合坚果、巧克力风味。',
+        notes: '粗磨豆子浸泡四分钟，按压后直接享受满杯厚实油脂。',
+        ratingLabel: '油脂感',
+        rating: 5,
+        metrics: [
+            { label: '温度', value: '94°C' },
+            { label: '研磨度', value: '粗磨' },
+            { label: '时间', value: '240s' },
+            { label: '粉量', value: '30g' },
+            { label: '比例', value: '1:12' },
+            { label: '终液量', value: '360ml' }
+        ]
+    },
+    {
+        id: 'espresso',
+        icon: '⚡',
+        name: '意式浓缩',
+        updated: '09/08/2025',
+        summary: '高压短时间萃取，适合做拿铁/美式的基底。',
+        notes: '18g粉量搭配1:2比例，保留甜感并带出明亮尾韵。',
+        ratingLabel: '浓郁度',
+        rating: 5,
+        metrics: [
+            { label: '温度', value: '93°C' },
+            { label: '研磨度', value: '极细' },
+            { label: '时间', value: '28s' },
+            { label: '粉量', value: '18g' },
+            { label: '比例', value: '1:2' },
+            { label: '终液量', value: '36ml' }
+        ]
+    }
+];
 
 // Notification System
 class NotificationManager {
@@ -485,6 +579,7 @@ document.addEventListener('DOMContentLoaded', function() {
     updateStats();
     setupEventListeners();
     loadSettings();
+    initCoffeeHub();
     
     // 确保汇总按钮是激活状态
     navButtons.forEach(btn => {
@@ -1772,6 +1867,279 @@ document.addEventListener('DOMContentLoaded', function() {
     // 初始化滚动头部隐藏功能
     initScrollHeader();
 });
+
+// Coffee hub helpers
+function initCoffeeHub() {
+    const coffeeOverlay = document.getElementById('coffeeOverlay');
+    const coffeeBtn = document.getElementById('coffeeBtn');
+    const coffeeCloseBtn = document.getElementById('coffeeCloseBtn');
+    const sections = {
+        methods: document.getElementById('coffeeMethodsSection'),
+        journal: document.getElementById('cafeJournalSection')
+    };
+    const tabButtons = document.querySelectorAll('.coffee-tab-btn');
+    const cafeVisitForm = document.getElementById('cafeVisitForm');
+    const cafeVisitList = document.getElementById('cafeVisitList');
+    
+    if (!coffeeOverlay || !coffeeBtn) {
+        return;
+    }
+    
+    const openOverlay = () => {
+        coffeeOverlay.classList.add('active');
+    };
+    
+    const closeOverlay = () => {
+        coffeeOverlay.classList.remove('active');
+    };
+    
+    coffeeBtn.addEventListener('click', openOverlay);
+    if (coffeeCloseBtn) {
+        coffeeCloseBtn.addEventListener('click', closeOverlay);
+    }
+    
+    coffeeOverlay.addEventListener('click', (event) => {
+        if (event.target === coffeeOverlay) {
+            closeOverlay();
+        }
+    });
+    
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && coffeeOverlay.classList.contains('active')) {
+            closeOverlay();
+        }
+    });
+    
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const tabName = button.dataset.coffeeTab;
+            if (!tabName) return;
+            
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            
+            Object.entries(sections).forEach(([key, section]) => {
+                if (!section) return;
+                section.classList.toggle('hidden', key !== tabName);
+            });
+        });
+    });
+    
+    if (cafeVisitForm) {
+        cafeVisitForm.addEventListener('submit', handleCafeVisitSubmit);
+    }
+    
+    if (cafeVisitList) {
+        cafeVisitList.addEventListener('click', (event) => {
+            const deleteBtn = event.target.closest('[data-delete-visit]');
+            if (!deleteBtn) return;
+            deleteCafeVisit(deleteBtn.dataset.deleteVisit);
+        });
+    }
+    
+    renderCoffeeMethods();
+    renderCafeVisits();
+}
+
+function renderCoffeeMethods() {
+    const list = document.getElementById('coffeeMethodList');
+    if (!list) {
+        return;
+    }
+    
+    const cards = coffeeMethods.map(method => {
+        const metrics = method.metrics.map(metric => `
+            <div class="method-meta-item">
+                <span>${metric.label}</span>
+                <strong>${metric.value}</strong>
+            </div>
+        `).join('');
+        
+        return `
+            <article class="coffee-method-card">
+                <div class="method-header">
+                    <div class="method-title">
+                        <span class="method-icon">${method.icon}</span>
+                        <h4>${method.name}</h4>
+                    </div>
+                    <span class="method-date">${method.updated}</span>
+                </div>
+                <p class="method-summary">${method.summary}</p>
+                <div class="method-meta-grid">
+                    ${metrics}
+                </div>
+                <div class="method-footer">
+                    <div class="method-rating-row">
+                        <span>${method.ratingLabel}</span>
+                        <div class="coffee-rating" aria-label="${method.ratingLabel}">
+                            ${buildRatingStars(method.rating)}
+                        </div>
+                    </div>
+                    <p class="method-notes">${method.notes}</p>
+                </div>
+            </article>
+        `;
+    }).join('');
+    
+    list.innerHTML = cards;
+}
+
+function handleCafeVisitSubmit(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    const visit = {
+        id: `visit-${Date.now()}`,
+        cafeName: getTrimmedFormValue(formData, 'cafeName'),
+        visitDatetime: formData.get('visitDatetime'),
+        location: getTrimmedFormValue(formData, 'visitLocation'),
+        beans: getTrimmedFormValue(formData, 'visitBeans'),
+        notes: getTrimmedFormValue(formData, 'visitNotes'),
+        rating: parseFloat(formData.get('visitRating')) || 0,
+        image: ''
+    };
+    
+    if (!visit.cafeName) {
+        return;
+    }
+    
+    const finalizeSave = () => {
+        cafeVisits.unshift(visit);
+        saveCafeVisits();
+        renderCafeVisits();
+        form.reset();
+    };
+    
+    const file = formData.get('visitPhoto');
+    if (file && file.size) {
+        readFileAsDataURL(file)
+            .then((dataUrl) => {
+                visit.image = dataUrl;
+                finalizeSave();
+            })
+            .catch(() => finalizeSave());
+    } else {
+        finalizeSave();
+    }
+}
+
+function renderCafeVisits() {
+    const list = document.getElementById('cafeVisitList');
+    if (!list) {
+        return;
+    }
+    
+    if (!Array.isArray(cafeVisits) || cafeVisits.length === 0) {
+        list.innerHTML = `
+            <div class="cafe-empty">
+                还没有探店记录，带上随身相机去邂逅一家小店吧 ☕
+            </div>
+        `;
+        return;
+    }
+    
+    const visits = [...cafeVisits].sort((a, b) => {
+        const aTime = new Date(a.visitDatetime || 0).getTime();
+        const bTime = new Date(b.visitDatetime || 0).getTime();
+        return bTime - aTime;
+    });
+    
+    list.innerHTML = visits.map(visit => {
+        const metaBlocks = [
+            visit.location ? `
+                <div>
+                    <strong>地点</strong>
+                    <span>${sanitizeHTML(visit.location)}</span>
+                </div>
+            ` : '',
+            visit.beans ? `
+                <div>
+                    <strong>品种</strong>
+                    <span>${sanitizeHTML(visit.beans)}</span>
+                </div>
+            ` : ''
+        ].join('');
+        
+        return `
+            <article class="cafe-visit-card">
+                <div class="cafe-visit-card-header">
+                    <div>
+                        <div class="card-title">${sanitizeHTML(visit.cafeName)}</div>
+                        <div class="card-subtitle">${formatVisitDatetime(visit.visitDatetime)}</div>
+                    </div>
+                    <button class="visit-delete-btn" data-delete-visit="${visit.id}" title="删除记录">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+                ${metaBlocks ? `<div class="cafe-visit-meta">${metaBlocks}</div>` : ''}
+                ${visit.image ? `<img src="${visit.image}" alt="${sanitizeHTML(visit.cafeName)}" class="cafe-visit-photo">` : ''}
+                ${visit.notes ? `<p class="cafe-visit-notes">${sanitizeHTML(visit.notes)}</p>` : ''}
+                ${visit.rating ? `<div class="cafe-visit-rating">${buildRatingStars(visit.rating)}</div>` : ''}
+            </article>
+        `;
+    }).join('');
+}
+
+function deleteCafeVisit(id) {
+    cafeVisits = cafeVisits.filter(visit => visit.id !== id);
+    saveCafeVisits();
+    renderCafeVisits();
+}
+
+function saveCafeVisits() {
+    localStorage.setItem('cafeVisits', JSON.stringify(cafeVisits));
+}
+
+function formatVisitDatetime(value) {
+    if (!value) {
+        return '未记录时间';
+    }
+    
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return value;
+    }
+    
+    const pad = (num) => String(num).padStart(2, '0');
+    return `${date.getFullYear()}年${pad(date.getMonth() + 1)}月${pad(date.getDate())}日 ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function buildRatingStars(score = 0) {
+    const normalized = Math.max(0, Math.min(5, Math.round(score)));
+    return Array.from({ length: 5 }, (_, index) => {
+        const filled = index < normalized ? 'filled' : 'muted';
+        return `<i class="fas fa-star ${filled}"></i>`;
+    }).join('');
+}
+
+function sanitizeHTML(text = '') {
+    if (typeof text !== 'string') return '';
+    return text.replace(/[&<>"']/g, (match) => {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        };
+        return map[match];
+    });
+}
+
+function getTrimmedFormValue(formData, key) {
+    const value = formData.get(key);
+    return typeof value === 'string' ? value.trim() : '';
+}
+
+function readFileAsDataURL(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+    });
+}
 
 // Search functionality
 function handleSearch(e) {
