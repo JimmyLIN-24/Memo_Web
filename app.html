@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="auth.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-sA+vx6bMpiKFFitP0uDsFf3AuZ2y+rNsqbmXp3jF4qs=" crossorigin="">
 </head>
 <body>
     <div class="app-container">
@@ -540,6 +541,21 @@
                             <h3>探店记录手账</h3>
                         </div>
                     </div>
+                    <div class="cafe-map-wrapper">
+                        <div class="cafe-map-header">
+                            <div>
+                                <p class="coffee-section-label">城市足迹</p>
+                                <h4>咖啡路线总览</h4>
+                            </div>
+                            <span class="cafe-map-count" id="cafeMapCounter">0个地点</span>
+                        </div>
+                        <div class="cafe-map-body">
+                            <div id="cafeMap" class="cafe-map"></div>
+                            <div class="cafe-map-empty" id="cafeMapEmpty">
+                                还没有定位点，记录一条探店后就会出现地图线路啦～
+                            </div>
+                        </div>
+                    </div>
                     <div class="journal-grid">
                         <form class="cafe-visit-form" id="cafeVisitForm">
                             <div class="form-row form-row-header">
@@ -555,11 +571,19 @@
                                     <label for="visitDatetime">日期时间*</label>
                                     <input type="datetime-local" id="visitDatetime" name="visitDatetime" required>
                                 </div>
-                                <div>
+                                <div class="location-input-group">
                                     <label for="visitLocation">地点</label>
-                                    <input type="text" id="visitLocation" name="visitLocation" placeholder="城市 / 商场 / 小巷">
+                                    <div class="location-input-row">
+                                        <input type="text" id="visitLocation" name="visitLocation" placeholder="城市 / 商场 / 小巷">
+                                        <button type="button" class="btn btn-coffee-outline" id="detectLocationBtn" title="使用当前位置">
+                                            <i class="fas fa-location-arrow"></i>
+                                        </button>
+                                    </div>
+                                    <small class="location-hint">可自动定位并生成地图坐标</small>
                                 </div>
                             </div>
+                            <input type="hidden" id="visitLat" name="visitLat">
+                            <input type="hidden" id="visitLng" name="visitLng">
                             <div class="form-row">
                                 <label for="visitBeans">咖啡 / 豆子品种</label>
                                 <input type="text" id="visitBeans" name="visitBeans" placeholder="耶加? 红蜜? 特色限定?">
@@ -593,6 +617,7 @@
     </div>
 
     <script src="auth.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-o9N1j7kGStb0tsG2wLa9Vj0JyoSgGJE0E/4PaND0v3s=" crossorigin=""></script>
     <script src="script.js"></script>
     <script>
         function goHome() {

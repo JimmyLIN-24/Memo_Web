@@ -115,7 +115,16 @@ const defaultCoffeeMethods = [
 ];
 const COFFEE_METHODS_STORAGE_KEY = 'coffeeMethodsCustom';
 const METHOD_METRIC_HINTS = ['温度', '研磨度', '时间', '粉量', '比例', '终液量'];
+const MAP_DEFAULT_CENTER = [31.2304, 121.4737];
 let coffeeMethods = loadCoffeeMethods();
+let cafeMap = null;
+let cafeMapMarkers = [];
+let cafeMapPath = null;
+let cafeMapInitialized = false;
+let visitLatInput = null;
+let visitLngInput = null;
+let cafeMapCounterEl = null;
+let cafeMapEmptyEl = null;
 
 // Notification System
 class NotificationManager {
@@ -1885,6 +1894,7 @@ function initCoffeeHub() {
     const cafeVisitList = document.getElementById('cafeVisitList');
     const cancelCafeEditBtn = document.getElementById('cancelCafeEditBtn');
     const resetCafeFormBtn = document.getElementById('resetCafeFormBtn');
+    const detectLocationBtn = document.getElementById('detectLocationBtn');
     const methodFormWrapper = document.getElementById('coffeeMethodFormWrapper');
     const methodForm = document.getElementById('coffeeMethodForm');
     const methodMetricsContainer = document.getElementById('methodMetricsContainer');
@@ -1903,6 +1913,10 @@ function initCoffeeHub() {
     const methodRatingInput = document.getElementById('methodRating');
     const methodIdField = document.getElementById('methodIdField');
     const coffeeMethodList = document.getElementById('coffeeMethodList');
+    visitLatInput = document.getElementById('visitLat');
+    visitLngInput = document.getElementById('visitLng');
+    cafeMapCounterEl = document.getElementById('cafeMapCounter');
+    cafeMapEmptyEl = document.getElementById('cafeMapEmpty');
     
     if (!coffeeOverlay || !coffeeBtn) {
         return;
@@ -1993,7 +2007,12 @@ function initCoffeeHub() {
         };
     };
     
-    const openOverlay = () => coffeeOverlay.classList.add('active');
+    const openOverlay = () => {
+        coffeeOverlay.classList.add('active');
+        setTimeout(() => {
+            refreshCafeMapSize();
+        }, 350);
+    };
     const closeOverlay = () => coffeeOverlay.classList.remove('active');
     
     coffeeBtn.addEventListener('click', openOverlay);
@@ -2047,6 +2066,7 @@ function initCoffeeHub() {
     
     cancelCafeEditBtn?.addEventListener('click', () => resetCafeForm());
     resetCafeFormBtn?.addEventListener('click', () => resetCafeForm());
+    detectLocationBtn?.addEventListener('click', () => detectCurrentLocation(detectLocationBtn));
     
     if (addMethodBtn) {
         addMethodBtn.addEventListener('click', () => {
@@ -2177,7 +2197,7 @@ function renderCoffeeMethods() {
     list.innerHTML = cards;
 }
 
-function handleCafeVisitSubmit(event) {
+async function handleCafeVisitSubmit(event) {
     event.preventDefault();
     const form = event.target;
     const formData = new FormData(form);
@@ -2192,11 +2212,21 @@ function handleCafeVisitSubmit(event) {
         beans: getTrimmedFormValue(formData, 'visitBeans'),
         notes: getTrimmedFormValue(formData, 'visitNotes'),
         rating: parseFloat(formData.get('visitRating')) || 0,
-        image: ''
+        lat: parseFloat(formData.get('visitLat')) || null,
+        lng: parseFloat(formData.get('visitLng')) || null
     };
     
     if (!visit.cafeName) {
         return;
+    }
+    
+    if ((!visit.lat || !visit.lng) && visit.location) {
+        const geocodeResult = await geocodeLocation(visit.location);
+        if (geocodeResult) {
+            visit.lat = geocodeResult.lat;
+            visit.lng = geocodeResult.lng;
+            setVisitLatLng(visit.lat, visit.lng);
+        }
     }
     
     const finalizeSave = (imageData) => {
@@ -2219,14 +2249,16 @@ function handleCafeVisitSubmit(event) {
         resetCafeForm();
     };
     
-    const file = formData.get('visitPhoto');
-    if (file && file.size) {
-        readFileAsDataURL(file)
-            .then((dataUrl) => {
-                finalizeSave(dataUrl);
-            })
-            .catch(() => finalizeSave(null));
-    } else {
+    try {
+        const file = formData.get('visitPhoto');
+        if (file && file.size) {
+            const imageData = await readFileAsDataURL(file);
+            finalizeSave(imageData);
+        } else {
+            finalizeSave(null);
+        }
+    } catch (error) {
+        console.warn('图片加载失败', error);
         finalizeSave(null);
     }
 }
@@ -2271,6 +2303,7 @@ function renderCafeVisits() {
         const notes = visit.notes ? sanitizeHTML(visit.notes).replace(/\n/g, '<br>') : '';
         const ratingStars = visit.rating ? `<div class="cafe-visit-rating">${buildRatingStars(visit.rating)}</div>` : '';
         const photo = visit.image ? `<img src="${visit.image}" alt="${sanitizeHTML(visit.cafeName)}" class="cafe-visit-photo" loading="lazy">` : '';
+        const mapThumb = buildVisitMapThumbnail(visit);
         
         return `
             <article class="cafe-visit-card">
@@ -2289,12 +2322,16 @@ function renderCafeVisits() {
                     </div>
                 </div>
                 ${metaBlocks ? `<div class="cafe-visit-meta">${metaBlocks}</div>` : ''}
+                ${mapThumb}
                 ${photo}
                 ${notes ? `<p class="cafe-visit-notes">${notes}</p>` : ''}
                 ${ratingStars}
             </article>
         `;
     }).join('');
+    
+    updateCafeMapCounter(cafeVisits.length);
+    updateCafeMap();
 }
 
 function loadCoffeeMethods() {
@@ -2412,12 +2449,200 @@ function toDatetimeLocalValue(value) {
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+function detectCurrentLocation(button) {
+    if (!navigator.geolocation) {
+        alert('当前设备不支持定位功能。');
+        return;
+    }
+    
+    button.disabled = true;
+    button.classList.add('loading');
+    const release = () => {
+        button.disabled = false;
+        button.classList.remove('loading');
+    };
+    
+    navigator.geolocation.getCurrentPosition(async (position) => {
+        const { latitude, longitude } = position.coords;
+        setVisitLatLng(latitude, longitude);
+        try {
+            const address = await reverseGeocode(latitude, longitude);
+            if (address) {
+                const locationInput = document.getElementById('visitLocation');
+                if (locationInput) {
+                    locationInput.value = address;
+                }
+            }
+        } catch (error) {
+            console.warn('反向地理编码失败', error);
+        }
+        release();
+    }, (error) => {
+        console.warn('定位失败', error);
+        alert('无法获取当前位置，请检查权限或稍后重试。');
+        release();
+    }, {
+        enableHighAccuracy: true,
+        timeout: 10000
+    });
+}
+
+async function geocodeLocation(query) {
+    if (!query) return null;
+    try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+        if (!response.ok) return null;
+        const data = await response.json();
+        if (!Array.isArray(data) || !data.length) return null;
+        return {
+            lat: parseFloat(data[0].lat),
+            lng: parseFloat(data[0].lon)
+        };
+    } catch (error) {
+        console.warn('地理编码失败', error);
+        return null;
+    }
+}
+
+async function reverseGeocode(lat, lng) {
+    if (typeof lat !== 'number' || typeof lng !== 'number') return '';
+    try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=0`);
+        if (!response.ok) return '';
+        const data = await response.json();
+        return data.display_name || '';
+    } catch (error) {
+        console.warn('反向地理编码失败', error);
+        return '';
+    }
+}
+
+function setVisitLatLng(lat, lng) {
+    if (visitLatInput) {
+        visitLatInput.value = typeof lat === 'number' ? lat : '';
+    }
+    if (visitLngInput) {
+        visitLngInput.value = typeof lng === 'number' ? lng : '';
+    }
+}
+
+function buildVisitMapThumbnail(visit) {
+    const lat = typeof visit.lat === 'number' ? visit.lat : parseFloat(visit.lat);
+    const lng = typeof visit.lng === 'number' ? visit.lng : parseFloat(visit.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return '';
+    }
+    const mapUrl = createStaticMapUrl(lat, lng);
+    return `
+        <div class="cafe-visit-map-thumb">
+            <img src="${mapUrl}" alt="地图缩略图" class="cafe-map-thumb-img" loading="lazy">
+        </div>
+    `;
+}
+
+function createStaticMapUrl(lat, lng) {
+    const roundedLat = lat.toFixed(6);
+    const roundedLng = lng.toFixed(6);
+    return `https://static-maps.yandex.ru/1.x/?lang=zh_CN&ll=${roundedLng},${roundedLat}&z=16&size=450,200&l=map&pt=${roundedLng},${roundedLat},pm2gnl`;
+}
+
+function ensureCafeMap() {
+    if (cafeMapInitialized && cafeMap) {
+        return cafeMap;
+    }
+    const container = document.getElementById('cafeMap');
+    if (!container || typeof L === 'undefined') {
+        return null;
+    }
+    cafeMap = L.map(container, {
+        zoomControl: false,
+        preferCanvas: true
+    }).setView(MAP_DEFAULT_CENTER, 4);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap',
+        maxZoom: 19
+    }).addTo(cafeMap);
+    cafeMapInitialized = true;
+    return cafeMap;
+}
+
+function refreshCafeMapSize() {
+    if (cafeMap) {
+        cafeMap.invalidateSize();
+    }
+}
+
+function clearCafeMap() {
+    cafeMapMarkers.forEach(marker => marker.remove());
+    cafeMapMarkers = [];
+    if (cafeMapPath) {
+        cafeMapPath.remove();
+        cafeMapPath = null;
+    }
+}
+
+function updateCafeMapCounter(count) {
+    if (cafeMapCounterEl) {
+        cafeMapCounterEl.textContent = `${count}个地点`;
+    }
+}
+
+function updateCafeMap() {
+    const map = ensureCafeMap();
+    if (!map) {
+        cafeMapEmptyEl?.classList.remove('hidden');
+        return;
+    }
+    
+    clearCafeMap();
+    const points = cafeVisits
+        .filter(visit => Number.isFinite(parseFloat(visit.lat)) && Number.isFinite(parseFloat(visit.lng)))
+        .map(visit => ({
+            lat: parseFloat(visit.lat),
+            lng: parseFloat(visit.lng),
+            name: visit.cafeName || '探店',
+            time: (() => {
+                const value = new Date(visit.visitDatetime || visit.timestamp || Date.now()).getTime();
+                return Number.isNaN(value) ? Date.now() : value;
+            })()
+        }));
+    
+    if (!points.length) {
+        cafeMap.setView(MAP_DEFAULT_CENTER, 4);
+        cafeMapEmptyEl?.classList.remove('hidden');
+        setTimeout(refreshCafeMapSize, 120);
+        return;
+    }
+    
+    cafeMapEmptyEl?.classList.add('hidden');
+    points.forEach(point => {
+        const marker = L.marker([point.lat, point.lng]).addTo(cafeMap).bindPopup(point.name);
+        cafeMapMarkers.push(marker);
+    });
+    
+    const pathPoints = [...points].sort((a, b) => a.time - b.time).map(point => [point.lat, point.lng]);
+    if (pathPoints.length >= 2) {
+        cafeMapPath = L.polyline(pathPoints, {
+            color: '#58a373',
+            weight: 3,
+            opacity: 0.8,
+            dashArray: '8,8'
+        }).addTo(cafeMap);
+        map.fitBounds(cafeMapPath.getBounds().pad(0.2));
+    } else {
+        map.setView([points[0].lat, points[0].lng], 13);
+    }
+    
+    setTimeout(refreshCafeMapSize, 120);
+}
+
 function resetCafeForm() {
     const form = document.getElementById('cafeVisitForm');
     if (!form) return;
     form.reset();
     delete form.dataset.editId;
     updateCafeFormMode(false);
+    setVisitLatLng(null, null);
 }
 
 function updateCafeFormMode(isEditing) {
@@ -2463,6 +2688,8 @@ function populateCafeFormForEdit(visit) {
         datetimeInput.value = toDatetimeLocalValue(visit.visitDatetime);
     }
     
+    setVisitLatLng(visit.lat, visit.lng);
+    
     form.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -2495,11 +2722,29 @@ function formatVisitDatetime(value) {
 }
 
 function buildRatingStars(score = 0) {
-    const normalized = Math.max(0, Math.min(5, Math.round(score)));
-    return Array.from({ length: 5 }, (_, index) => {
-        const filled = index < normalized ? 'filled' : 'muted';
-        return `<i class="fas fa-star ${filled}"></i>`;
-    }).join('');
+    const numericScore = Math.max(0, Math.min(5, Number(score) || 0));
+    let fullStars = Math.floor(numericScore);
+    const fraction = numericScore - fullStars;
+    let hasHalf = false;
+    
+    if (fraction >= 0.75) {
+        fullStars = Math.min(5, fullStars + 1);
+    } else if (fraction >= 0.25) {
+        hasHalf = true;
+    }
+    
+    const stars = [];
+    for (let i = 0; i < 5; i++) {
+        if (i < fullStars) {
+            stars.push('<i class="fas fa-star filled"></i>');
+        } else if (hasHalf) {
+            stars.push('<i class="fas fa-star-half-alt half"></i>');
+            hasHalf = false;
+        } else {
+            stars.push('<i class="fas fa-star muted"></i>');
+        }
+    }
+    return stars.join('');
 }
 
 function sanitizeHTML(text = '') {
