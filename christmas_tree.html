@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>魔法圣诞树 | Memo Web</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #001a0f; /* 深祖母绿背景 */
+            font-family: 'Inter', sans-serif;
+            touch-action: none; /* 禁止默认触摸行为 */
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        #ui-container {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            z-index: 2;
+            color: #ffd700;
+            pointer-events: none;
+        }
+        .control-hint {
+            background: rgba(0, 20, 10, 0.6);
+            padding: 10px 20px;
+            border-radius: 30px;
+            display: inline-block;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 14px;
+            backdrop-filter: blur(5px);
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .camera-feed {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 160px; /* 稍微加大一点 */
+            height: 120px;
+            border-radius: 8px;
+            z-index: 10;
+            border: 2px solid #ffd700;
+            transform: scaleX(-1); /* 镜像 */
+            background: #000;
+            overflow: hidden;
+        }
+        #video-element {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            top: 0;
+            left: 0;
+            opacity: 0.6; /* 视频半透明 */
+        }
+        #output-canvas {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+            /* Canvas 不透明，保持高亮 */
+        }
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffd700;
+            font-size: 24px;
+            z-index: 100;
+            text-shadow: 0 0 10px #ffd700;
+        }
+    </style>
+    <!-- Import Three.js and addons -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <!-- MediaPipe -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    <a href="app.html" class="back-btn">
+        <span>←</span> 返回
+    </a>
+
+    <div class="loading" id="loading">魔法加载中...</div>
+
+    <div class="camera-feed" id="cameraContainer" style="display: none;">
+        <video id="video-element" playsinline></video>
+        <canvas id="output-canvas"></canvas>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <div id="ui-container">
+        <div class="control-hint">
+            🖐️ 左右移动手掌旋转 · 🤏 捏合手指聚拢碎片<br>
+            (如无法开启摄像头，可直接触摸屏幕互动)
+        </div>
+        <button id="toggleCamera" style="pointer-events: auto; background: rgba(255,215,0,0.2); border: 1px solid #ffd700; color: #ffd700; padding: 5px 10px; border-radius: 15px; cursor: pointer; margin-top:5px;">开启摄像头互动</button>
+    </div>
+
+    <script type="module" src="christmas.js"></script>
+</body>
+</html>

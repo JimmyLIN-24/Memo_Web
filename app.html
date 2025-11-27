@@ -60,6 +60,10 @@
                         <i class="fas fa-mug-hot"></i>
                         咖啡角
                     </button>
+                    <button class="btn btn-christmas" id="christmasBtn" onclick="window.location.href='christmas_tree.html'">
+                        <i class="fas fa-tree"></i>
+                        圣诞树
+                    </button>
                     <button class="btn btn-game" id="gameBtn">
                         <i class="fas fa-gamepad"></i>
                         Game
@@ -557,10 +561,18 @@
                         </div>
                     </div>
                     <div class="journal-grid">
-                        <form class="cafe-visit-form" id="cafeVisitForm">
+                        <!-- 新增：记录按钮 -->
+                        <div class="cafe-action-header">
+                            <button class="btn btn-primary btn-large-record" id="showCafeFormBtn">
+                                <i class="fas fa-pen-fancy"></i>
+                                记录新的探店
+                            </button>
+                        </div>
+
+                        <form class="cafe-visit-form hidden" id="cafeVisitForm">
                             <div class="form-row form-row-header">
                                 <h4 id="cafeFormTitle">记录新的探店</h4>
-                                <button type="button" class="link-btn hidden" id="cancelCafeEditBtn">取消编辑</button>
+                                <button type="button" class="link-btn" id="cancelCafeEditBtn">取消/收起</button>
                             </div>
                             <div class="form-row">
                                 <label for="cafeName">店名 / 咖啡窗口*</label>
@@ -575,13 +587,20 @@
                                     <label for="visitLocation">地点</label>
                                     <div class="location-input-row">
                                         <input type="text" id="visitLocation" name="visitLocation" placeholder="城市 / 商场 / 小巷">
-                                        <button type="button" class="btn btn-coffee-outline" id="detectLocationBtn" title="使用当前位置">
-                                            <i class="fas fa-location-arrow"></i>
+                                        <button type="button" class="btn btn-coffee-outline" id="detectLocationBtn" title="定位并选点">
+                                            <i class="fas fa-map-marker-alt"></i>
                                         </button>
                                     </div>
-                                    <small class="location-hint">可自动定位并生成地图坐标</small>
                                 </div>
                             </div>
+                            
+                            <!-- 新增：地图选点容器 -->
+                            <div class="form-row hidden" id="locationPickerWrapper">
+                                <label>确认位置 (拖动地图修正)</label>
+                                <div id="locationPickerMap" class="location-picker-map"></div>
+                                <small class="location-hint">拖动地图以修正定位，点击确定使用该位置</small>
+                            </div>
+
                             <input type="hidden" id="visitLat" name="visitLat">
                             <input type="hidden" id="visitLng" name="visitLng">
                             <div class="form-row">
@@ -639,3 +658,4 @@
     </script>
 </body>
 </html> 
+

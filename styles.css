@@ -1616,6 +1616,18 @@ body.is-scrolling .header-middle {
     transform: translateY(-2px);
 }
 
+/* Christmas Button */
+.btn-christmas {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    border: none;
+}
+
+.btn-christmas:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+    transform: translateY(-2px);
+}
+
 /* Game Overlay */
 .game-overlay {
     position: fixed;
@@ -2953,4 +2965,85 @@ body.is-scrolling .header-middle {
     .win-stars {
         font-size: 2rem;
     }
+}
+
+/* 新增样式：探店记录按钮和隐藏表单 */
+.cafe-action-header {
+    margin-bottom: 1.5rem;
+}
+
+.btn-large-record {
+    width: 100%;
+    padding: 1rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    border-radius: 16px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(99, 102, 241, 0.25);
+    transition: all 0.3s ease;
+}
+
+.btn-large-record:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 25px rgba(99, 102, 241, 0.35);
+}
+
+.cafe-visit-form.hidden {
+    display: none;
+}
+
+.form-row.hidden {
+    display: none;
+}
+
+/* 地图选点容器 */
+.location-picker-map {
+    width: 100%;
+    height: 250px;
+    border-radius: 14px;
+    border: 2px solid var(--primary);
+    margin-top: 0.5rem;
+    overflow: hidden;
+    z-index: 1;
+}
+
+/* Leaflet popup 样式优化 */
+.leaflet-popup-content-wrapper {
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+}
+
+.leaflet-popup-content {
+    margin: 10px 14px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+}
+
+/* 地图星星标记样式 */
+.map-star-icon {
+    background: none !important;
+    border: none !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+}
+
+.map-star-icon i {
+    color: #f59e0b; /* 金色 */
+    font-size: 24px;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    animation: star-bounce 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes star-bounce {
+    0% { transform: scale(0); opacity: 0; }
+    60% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(1); }
 } 

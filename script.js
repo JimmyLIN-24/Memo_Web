@@ -116,8 +116,14 @@ const defaultCoffeeMethods = [
 const COFFEE_METHODS_STORAGE_KEY = 'coffeeMethodsCustom';
 const METHOD_METRIC_HINTS = ['温度', '研磨度', '时间', '粉量', '比例', '终液量'];
 const MAP_DEFAULT_CENTER = [31.2304, 121.4737];
+// 使用高德地图 HTTPS 瓦片源 (wprd01-04 均可)
+const MAP_TILE_URL = 'https://wprd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&style=7&x={x}&y={y}&z={z}';
+const AMAP_KEY = 'a4609dd3890678515b09617e783f7c6a'; 
+
 let coffeeMethods = loadCoffeeMethods();
 let cafeMap = null;
+let locationPickerMap = null;
+let locationPickerMarker = null;
 let cafeMapMarkers = [];
 let cafeMapPath = null;
 let cafeMapInitialized = false;
@@ -1913,6 +1919,7 @@ function initCoffeeHub() {
     const methodRatingInput = document.getElementById('methodRating');
     const methodIdField = document.getElementById('methodIdField');
     const coffeeMethodList = document.getElementById('coffeeMethodList');
+    const showCafeFormBtn = document.getElementById('showCafeFormBtn');
     visitLatInput = document.getElementById('visitLat');
     visitLngInput = document.getElementById('visitLng');
     cafeMapCounterEl = document.getElementById('cafeMapCounter');
@@ -2060,11 +2067,26 @@ function initCoffeeHub() {
             const visit = cafeVisits.find(item => item.id === editBtn.dataset.editVisit);
             if (visit) {
                 populateCafeFormForEdit(visit);
+                // 确保表单显示
+                if (cafeVisitForm) cafeVisitForm.classList.remove('hidden');
+                if (showCafeFormBtn) showCafeFormBtn.style.display = 'none';
             }
         }
     });
     
-    cancelCafeEditBtn?.addEventListener('click', () => resetCafeForm());
+    if (showCafeFormBtn) {
+        showCafeFormBtn.addEventListener('click', () => {
+            showCafeFormBtn.style.display = 'none';
+            if (cafeVisitForm) cafeVisitForm.classList.remove('hidden');
+        });
+    }
+    
+    cancelCafeEditBtn?.addEventListener('click', () => {
+        resetCafeForm();
+        if (cafeVisitForm) cafeVisitForm.classList.add('hidden');
+        if (showCafeFormBtn) showCafeFormBtn.style.display = 'flex';
+    });
+    
     resetCafeFormBtn?.addEventListener('click', () => resetCafeForm());
     detectLocationBtn?.addEventListener('click', () => detectCurrentLocation(detectLocationBtn));
     
@@ -2200,14 +2222,35 @@ function renderCoffeeMethods() {
 async function handleCafeVisitSubmit(event) {
     event.preventDefault();
     const form = event.target;
+    const submitBtn = document.getElementById('cafeFormSubmitBtn');
+    const originalBtnText = submitBtn ? submitBtn.textContent : '收藏这次探店';
+    
+    // 防止重复提交
+    if (submitBtn && submitBtn.disabled) return;
+    
     const formData = new FormData(form);
     const editingId = form.dataset.editId || '';
     const existingIndex = cafeVisits.findIndex(visit => visit.id === editingId);
     
+    // 必填校验
+    const cafeName = getTrimmedFormValue(formData, 'cafeName');
+    const visitDatetime = formData.get('visitDatetime');
+    
+    if (!cafeName || !visitDatetime) {
+        alert('请填写店名和日期时间');
+        return;
+    }
+
+    // UI Loading
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
+    }
+    
     const visit = {
         id: editingId || `visit-${Date.now()}`,
-        cafeName: getTrimmedFormValue(formData, 'cafeName'),
-        visitDatetime: formData.get('visitDatetime'),
+        cafeName: cafeName,
+        visitDatetime: visitDatetime,
         location: getTrimmedFormValue(formData, 'visitLocation'),
         beans: getTrimmedFormValue(formData, 'visitBeans'),
         notes: getTrimmedFormValue(formData, 'visitNotes'),
@@ -2216,16 +2259,16 @@ async function handleCafeVisitSubmit(event) {
         lng: parseFloat(formData.get('visitLng')) || null
     };
     
-    if (!visit.cafeName) {
-        return;
-    }
-    
+    // 如果有地址但没有坐标，尝试自动编码
     if ((!visit.lat || !visit.lng) && visit.location) {
-        const geocodeResult = await geocodeLocation(visit.location);
-        if (geocodeResult) {
-            visit.lat = geocodeResult.lat;
-            visit.lng = geocodeResult.lng;
-            setVisitLatLng(visit.lat, visit.lng);
+        try {
+            const geocodeResult = await geocodeLocation(visit.location);
+            if (geocodeResult) {
+                visit.lat = geocodeResult.lat;
+                visit.lng = geocodeResult.lng;
+            }
+        } catch (e) {
+            console.warn('自动地理编码失败', e);
         }
     }
     
@@ -2247,6 +2290,16 @@ async function handleCafeVisitSubmit(event) {
         saveCafeVisits();
         renderCafeVisits();
         resetCafeForm();
+        
+        // 收起表单
+        form.classList.add('hidden');
+        const showBtn = document.getElementById('showCafeFormBtn');
+        if (showBtn) showBtn.style.display = 'flex';
+        
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalBtnText;
+        }
     };
     
     try {
@@ -2457,24 +2510,34 @@ function detectCurrentLocation(button) {
     
     button.disabled = true;
     button.classList.add('loading');
+    const originalIcon = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    
     const release = () => {
         button.disabled = false;
         button.classList.remove('loading');
+        button.innerHTML = originalIcon;
     };
     
     navigator.geolocation.getCurrentPosition(async (position) => {
         const { latitude, longitude } = position.coords;
         setVisitLatLng(latitude, longitude);
+        
+        // 显示地图选点器
+        updateLocationPicker(latitude, longitude);
+        
         try {
             const address = await reverseGeocode(latitude, longitude);
             if (address) {
                 const locationInput = document.getElementById('visitLocation');
                 if (locationInput) {
                     locationInput.value = address;
+                    // 触发输入事件以确保状态更新
+                    locationInput.dispatchEvent(new Event('input'));
                 }
             }
         } catch (error) {
-            console.warn('反向地理编码失败', error);
+            console.warn('反向地理编码过程失败', error);
         }
         release();
     }, (error) => {
@@ -2487,19 +2550,86 @@ function detectCurrentLocation(button) {
     });
 }
 
+function updateLocationPicker(lat, lng) {
+    const wrapper = document.getElementById('locationPickerWrapper');
+    const container = document.getElementById('locationPickerMap');
+    
+    if (!wrapper || !container || typeof L === 'undefined') return;
+    
+    wrapper.classList.remove('hidden');
+    
+    if (!locationPickerMap) {
+        locationPickerMap = L.map(container, {
+            zoomControl: true,
+            attributionControl: false
+        });
+        
+        L.tileLayer(MAP_TILE_URL, {
+            maxZoom: 18,
+            minZoom: 3
+        }).addTo(locationPickerMap);
+        
+        // 点击地图移动标记
+        locationPickerMap.on('click', (e) => {
+            updatePickerMarker(e.latlng.lat, e.latlng.lng);
+        });
+    }
+    
+    // 确保地图大小正确（特别是当容器从隐藏变为显示时）
+    setTimeout(() => {
+        locationPickerMap.invalidateSize();
+    }, 100);
+    
+    locationPickerMap.setView([lat, lng], 16);
+    updatePickerMarker(lat, lng);
+}
+
+function updatePickerMarker(lat, lng) {
+    if (locationPickerMarker) {
+        locationPickerMarker.setLatLng([lat, lng]);
+    } else {
+        locationPickerMarker = L.marker([lat, lng], {
+            draggable: true
+        }).addTo(locationPickerMap);
+        
+        // 拖拽结束更新坐标
+        locationPickerMarker.on('dragend', async (e) => {
+            const pos = e.target.getLatLng();
+            setVisitLatLng(pos.lat, pos.lng);
+            
+            // 可选：拖拽后更新地址输入框
+            /*
+            try {
+                const address = await reverseGeocode(pos.lat, pos.lng);
+                const locationInput = document.getElementById('visitLocation');
+                if (locationInput && address) {
+                    locationInput.value = address;
+                }
+            } catch (err) { console.warn(err); }
+            */
+        });
+    }
+    
+    // 更新隐藏域坐标
+    setVisitLatLng(lat, lng);
+}
+
 async function geocodeLocation(query) {
     if (!query) return null;
     try {
-        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+        // 使用高德地理编码 API
+        const response = await fetch(`https://restapi.amap.com/v3/geocode/geo?key=${AMAP_KEY}&address=${encodeURIComponent(query)}`);
         if (!response.ok) return null;
         const data = await response.json();
-        if (!Array.isArray(data) || !data.length) return null;
-        return {
-            lat: parseFloat(data[0].lat),
-            lng: parseFloat(data[0].lon)
-        };
+        
+        if (data.status === '1' && data.geocodes && data.geocodes.length > 0) {
+            const location = data.geocodes[0].location; // 格式: "lng,lat"
+            const [lng, lat] = location.split(',').map(Number);
+            return { lat, lng };
+        }
+        return null;
     } catch (error) {
-        console.warn('地理编码失败', error);
+        console.warn('高德地理编码失败', error);
         return null;
     }
 }
@@ -2507,12 +2637,26 @@ async function geocodeLocation(query) {
 async function reverseGeocode(lat, lng) {
     if (typeof lat !== 'number' || typeof lng !== 'number') return '';
     try {
-        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=0`);
-        if (!response.ok) return '';
+        // 使用高德逆地理编码 API
+        const url = `https://restapi.amap.com/v3/geocode/regeo?key=${AMAP_KEY}&location=${lng},${lat}&radius=500&extensions=base`;
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            console.warn('高德API请求失败:', response.status);
+            return '';
+        }
+        
         const data = await response.json();
-        return data.display_name || '';
+        // console.log('高德逆地理编码返回:', data);
+        
+        if (data.status === '1' && data.regeocode) {
+            return data.regeocode.formatted_address || '';
+        } else {
+            console.warn('高德API返回错误:', data.info);
+        }
+        return '';
     } catch (error) {
-        console.warn('反向地理编码失败', error);
+        console.warn('高德逆地理编码异常:', error);
         return '';
     }
 }
@@ -2533,6 +2677,8 @@ function buildVisitMapThumbnail(visit) {
         return '';
     }
     const mapUrl = createStaticMapUrl(lat, lng);
+    if (!mapUrl) return '';
+    
     return `
         <div class="cafe-visit-map-thumb">
             <img src="${mapUrl}" alt="地图缩略图" class="cafe-map-thumb-img" loading="lazy">
@@ -2541,9 +2687,13 @@ function buildVisitMapThumbnail(visit) {
 }
 
 function createStaticMapUrl(lat, lng) {
+    // 使用高德静态地图 API
+    // zoom=15: 街道级别
+    // size=400*200: 图片尺寸
+    // markers=mid,,A:lng,lat: 在中心点显示标记
     const roundedLat = lat.toFixed(6);
     const roundedLng = lng.toFixed(6);
-    return `https://static-maps.yandex.ru/1.x/?lang=zh_CN&ll=${roundedLng},${roundedLat}&z=16&size=450,200&l=map&pt=${roundedLng},${roundedLat},pm2gnl`;
+    return `https://restapi.amap.com/v3/staticmap?location=${roundedLng},${roundedLat}&zoom=15&size=450*200&markers=mid,,A:${roundedLng},${roundedLat}&key=${AMAP_KEY}`;
 }
 
 function ensureCafeMap() {
@@ -2558,10 +2708,13 @@ function ensureCafeMap() {
         zoomControl: false,
         preferCanvas: true
     }).setView(MAP_DEFAULT_CENTER, 4);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap',
-        maxZoom: 19
+    
+    L.tileLayer(MAP_TILE_URL, {
+        attribution: '&copy; AutoNavi',
+        maxZoom: 18,
+        minZoom: 3
     }).addTo(cafeMap);
+    
     cafeMapInitialized = true;
     return cafeMap;
 }
@@ -2589,12 +2742,25 @@ function updateCafeMapCounter(count) {
 
 function updateCafeMap() {
     const map = ensureCafeMap();
-    if (!map) {
+    // 只要地图能初始化，就隐藏 empty 提示，始终展示地图
+    if (map) {
+        cafeMapEmptyEl?.classList.add('hidden');
+    } else {
         cafeMapEmptyEl?.classList.remove('hidden');
         return;
     }
     
     clearCafeMap();
+    
+    // 定义星星图标
+    const starIcon = L.divIcon({
+        className: 'map-star-icon',
+        html: '<i class="fas fa-star"></i>',
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+        popupAnchor: [0, -12]
+    });
+
     const points = cafeVisits
         .filter(visit => Number.isFinite(parseFloat(visit.lat)) && Number.isFinite(parseFloat(visit.lng)))
         .map(visit => ({
@@ -2608,25 +2774,27 @@ function updateCafeMap() {
         }));
     
     if (!points.length) {
-        cafeMap.setView(MAP_DEFAULT_CENTER, 4);
-        cafeMapEmptyEl?.classList.remove('hidden');
+        // 如果没有点，尝试使用浏览器定位设置中心，或者保持默认
+        // 这里保持默认视图，等待用户录入数据
+        // map.setView(MAP_DEFAULT_CENTER, 4); 
         setTimeout(refreshCafeMapSize, 120);
         return;
     }
     
-    cafeMapEmptyEl?.classList.add('hidden');
     points.forEach(point => {
-        const marker = L.marker([point.lat, point.lng]).addTo(cafeMap).bindPopup(point.name);
+        const marker = L.marker([point.lat, point.lng], { icon: starIcon })
+            .addTo(cafeMap)
+            .bindPopup(`<b>${sanitizeHTML(point.name)}</b>`);
         cafeMapMarkers.push(marker);
     });
     
     const pathPoints = [...points].sort((a, b) => a.time - b.time).map(point => [point.lat, point.lng]);
     if (pathPoints.length >= 2) {
         cafeMapPath = L.polyline(pathPoints, {
-            color: '#58a373',
-            weight: 3,
-            opacity: 0.8,
-            dashArray: '8,8'
+            color: '#f59e0b', // 使用星星的金色
+            weight: 2,
+            opacity: 0.6,
+            dashArray: '5,5'
         }).addTo(cafeMap);
         map.fitBounds(cafeMapPath.getBounds().pad(0.2));
     } else {
@@ -2643,6 +2811,13 @@ function resetCafeForm() {
     delete form.dataset.editId;
     updateCafeFormMode(false);
     setVisitLatLng(null, null);
+    
+    // 隐藏地图选点器
+    const picker = document.getElementById('locationPickerWrapper');
+    if (picker) picker.classList.add('hidden');
+    
+    // 如果不是在编辑模式下取消，而是重置，保持表单展开状态（或者可以根据需求收起）
+    // 这里我们选择只在显式点击取消按钮时收起，重置按钮只清空内容
 }
 
 function updateCafeFormMode(isEditing) {
