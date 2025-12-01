@@ -11,20 +11,24 @@ class AuthManager {
         // 检查本地存储的登录状态
         const savedUser = localStorage.getItem('memo_current_user');
         if (savedUser) {
-            this.currentUser = JSON.parse(savedUser);
-            this.isLoggedIn = true;
-            this.showUserInfo();
-            
-            // 如果是Grace快捷用户，加载专用数据
-            if (this.currentUser.isQuickUser) {
-                this.loadGraceUserData();
-            } else {
-                // 其他用户自动同步云端数据
-                this.syncFromCloud();
+            try {
+                this.currentUser = JSON.parse(savedUser);
+                this.isLoggedIn = true;
+                this.showUserInfo();
+                
+                // 如果是Grace快捷用户，加载专用数据
+                if (this.currentUser && this.currentUser.isQuickUser) {
+                    this.loadGraceUserData();
+                } else {
+                    // 其他用户自动同步云端数据
+                    this.syncFromCloud();
+                }
+            } catch (e) {
+                console.error('用户数据解析失败', e);
+                // 出错时不强制登录，允许本地使用
             }
-        } else {
-            this.showLoginForm();
         }
+        // 未登录时不强制弹窗，允许访客模式
     }
 
     // 显示登录表单
@@ -35,6 +39,7 @@ class AuthManager {
             <div class="auth-content">
                 <div class="auth-header">
                     <h2>🔐 用户登录</h2>
+                    <button class="modal-close" style="position: absolute; right: 20px; top: 20px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666;" onclick="this.closest('.auth-modal').remove()">×</button>
                     <p>登录以同步您的备忘录数据</p>
                 </div>
                 <div class="auth-tabs">

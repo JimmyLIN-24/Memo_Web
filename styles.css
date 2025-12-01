@@ -1637,7 +1637,7 @@ body.is-scrolling .header-middle {
     height: 100%;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     z-index: 1100;
-    display: flex;
+    display: none; /* Default hidden */
     align-items: center;
     justify-content: center;
 }
