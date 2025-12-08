@@ -2309,38 +2309,66 @@ async function handleCafeVisitSubmit(event) {
             }
         }
         
-        // 执行保存
-        if (editingId && existingIndex > -1) {
-            const previous = cafeVisits[existingIndex];
-            cafeVisits[existingIndex] = {
-                ...previous,
-                ...visit,
-                id: editingId,
-                image: typeof imageData === 'string' ? imageData : previous.image
-            };
-        } else {
-            cafeVisits.unshift({
-                ...visit,
-                image: typeof imageData === 'string' ? imageData : ''
-            });
+        // 执行保存（核心操作，必须成功）
+        try {
+            if (editingId && existingIndex > -1) {
+                const previous = cafeVisits[existingIndex];
+                cafeVisits[existingIndex] = {
+                    ...previous,
+                    ...visit,
+                    id: editingId,
+                    image: typeof imageData === 'string' ? imageData : previous.image
+                };
+            } else {
+                cafeVisits.unshift({
+                    ...visit,
+                    image: typeof imageData === 'string' ? imageData : ''
+                });
+            }
+            
+            // 保存到 localStorage（关键步骤）
+            saveCafeVisits();
+            
+            // 渲染列表（即使失败也不影响数据保存）
+            try {
+                renderCafeVisits();
+            } catch (renderErr) {
+                console.warn('渲染列表失败，但数据已保存', renderErr);
+            }
+            
+            // 重置表单（即使失败也不影响数据保存）
+            try {
+                resetCafeForm();
+            } catch (resetErr) {
+                console.warn('重置表单失败', resetErr);
+            }
+            
+            // 收起表单
+            try {
+                form.classList.add('hidden');
+                const showBtn = document.getElementById('showCafeFormBtn');
+                if (showBtn) showBtn.style.display = 'flex';
+            } catch (uiErr) {
+                console.warn('更新UI失败', uiErr);
+            }
+            
+            // 恢复按钮（必须执行）
+            restoreButton();
+            
+            // 成功提示
+            console.log('探店记录保存成功');
+            
+        } catch (saveError) {
+            console.error('保存数据时发生错误', saveError);
+            throw saveError; // 重新抛出，让外层 catch 处理
         }
-        
-        saveCafeVisits();
-        renderCafeVisits();
-        resetCafeForm();
-        
-        // 收起表单
-        form.classList.add('hidden');
-        const showBtn = document.getElementById('showCafeFormBtn');
-        if (showBtn) showBtn.style.display = 'flex';
-        
-        // 恢复按钮
-        restoreButton();
         
     } catch (error) {
         console.error('保存探店记录时发生错误', error);
-        alert('保存失败，请重试。如果问题持续，请检查网络连接。');
+        // 即使出错也要恢复按钮
         restoreButton();
+        // 显示错误提示
+        alert('保存失败：' + (error.message || '未知错误') + '\n\n请检查控制台获取详细信息，或尝试刷新页面后重试。');
     }
 }
 
@@ -2350,69 +2378,100 @@ function renderCafeVisits() {
         return;
     }
     
-    if (!Array.isArray(cafeVisits) || cafeVisits.length === 0) {
+    try {
+        if (!Array.isArray(cafeVisits) || cafeVisits.length === 0) {
+            list.innerHTML = `
+                <div class="cafe-empty">
+                    还没有探店记录，带上随身相机去邂逅一家小店吧 ☕
+                </div>
+            `;
+            updateCafeMapCounter(0);
+            return;
+        }
+        
+        const visits = [...cafeVisits].sort((a, b) => {
+            try {
+                const aTime = new Date(a.visitDatetime || 0).getTime();
+                const bTime = new Date(b.visitDatetime || 0).getTime();
+                return bTime - aTime;
+            } catch (e) {
+                return 0; // 排序失败时保持原顺序
+            }
+        });
+        
+        list.innerHTML = visits.map(visit => {
+            try {
+                const metaBlocks = [
+                    visit.location ? `
+                        <div>
+                            <strong>地点</strong>
+                            <span>${sanitizeHTML(visit.location)}</span>
+                        </div>
+                    ` : '',
+                    visit.beans ? `
+                        <div>
+                            <strong>品种</strong>
+                            <span>${sanitizeHTML(visit.beans)}</span>
+                        </div>
+                    ` : ''
+                ].join('');
+                
+                const notes = visit.notes ? sanitizeHTML(visit.notes).replace(/\n/g, '<br>') : '';
+                const ratingStars = visit.rating ? `<div class="cafe-visit-rating">${buildRatingStars(visit.rating)}</div>` : '';
+                const photo = visit.image ? `<img src="${visit.image}" alt="${sanitizeHTML(visit.cafeName || '')}" class="cafe-visit-photo" loading="lazy">` : '';
+                const mapThumb = buildVisitMapThumbnail(visit);
+                
+                return `
+                    <article class="cafe-visit-card">
+                        <div class="cafe-visit-card-header">
+                            <div>
+                                <div class="card-title">${sanitizeHTML(visit.cafeName || '未命名')}</div>
+                                <div class="card-subtitle">${formatVisitDatetime(visit.visitDatetime)}</div>
+                            </div>
+                            <div class="visit-card-actions">
+                                <button class="visit-edit-btn" data-edit-visit="${visit.id || ''}" title="编辑记录">
+                                    <i class="fas fa-pen"></i>
+                                </button>
+                                <button class="visit-delete-btn" data-delete-visit="${visit.id || ''}" title="删除记录">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        ${metaBlocks ? `<div class="cafe-visit-meta">${metaBlocks}</div>` : ''}
+                        ${mapThumb}
+                        ${photo}
+                        ${notes ? `<p class="cafe-visit-notes">${notes}</p>` : ''}
+                        ${ratingStars}
+                    </article>
+                `;
+            } catch (e) {
+                console.warn('渲染单条记录失败', visit, e);
+                return ''; // 跳过有问题的记录
+            }
+        }).filter(Boolean).join('');
+        
+        // 更新计数器（即使地图更新失败也要更新）
+        try {
+            updateCafeMapCounter(cafeVisits.length);
+        } catch (e) {
+            console.warn('更新地图计数器失败', e);
+        }
+        
+        // 更新地图（即使失败也不影响列表显示）
+        try {
+            updateCafeMap();
+        } catch (e) {
+            console.warn('更新地图失败', e);
+            // 地图更新失败不影响保存成功
+        }
+    } catch (error) {
+        console.error('渲染探店记录列表失败', error);
         list.innerHTML = `
             <div class="cafe-empty">
-                还没有探店记录，带上随身相机去邂逅一家小店吧 ☕
+                渲染失败，请刷新页面重试
             </div>
         `;
-        return;
     }
-    
-    const visits = [...cafeVisits].sort((a, b) => {
-        const aTime = new Date(a.visitDatetime || 0).getTime();
-        const bTime = new Date(b.visitDatetime || 0).getTime();
-        return bTime - aTime;
-    });
-    
-    list.innerHTML = visits.map(visit => {
-        const metaBlocks = [
-            visit.location ? `
-                <div>
-                    <strong>地点</strong>
-                    <span>${sanitizeHTML(visit.location)}</span>
-                </div>
-            ` : '',
-            visit.beans ? `
-                <div>
-                    <strong>品种</strong>
-                    <span>${sanitizeHTML(visit.beans)}</span>
-                </div>
-            ` : ''
-        ].join('');
-        
-        const notes = visit.notes ? sanitizeHTML(visit.notes).replace(/\n/g, '<br>') : '';
-        const ratingStars = visit.rating ? `<div class="cafe-visit-rating">${buildRatingStars(visit.rating)}</div>` : '';
-        const photo = visit.image ? `<img src="${visit.image}" alt="${sanitizeHTML(visit.cafeName)}" class="cafe-visit-photo" loading="lazy">` : '';
-        const mapThumb = buildVisitMapThumbnail(visit);
-        
-        return `
-            <article class="cafe-visit-card">
-                <div class="cafe-visit-card-header">
-                    <div>
-                        <div class="card-title">${sanitizeHTML(visit.cafeName)}</div>
-                        <div class="card-subtitle">${formatVisitDatetime(visit.visitDatetime)}</div>
-                    </div>
-                    <div class="visit-card-actions">
-                        <button class="visit-edit-btn" data-edit-visit="${visit.id}" title="编辑记录">
-                            <i class="fas fa-pen"></i>
-                        </button>
-                        <button class="visit-delete-btn" data-delete-visit="${visit.id}" title="删除记录">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-                ${metaBlocks ? `<div class="cafe-visit-meta">${metaBlocks}</div>` : ''}
-                ${mapThumb}
-                ${photo}
-                ${notes ? `<p class="cafe-visit-notes">${notes}</p>` : ''}
-                ${ratingStars}
-            </article>
-        `;
-    }).join('');
-    
-    updateCafeMapCounter(cafeVisits.length);
-    updateCafeMap();
 }
 
 function loadCoffeeMethods() {
@@ -2777,83 +2836,147 @@ function updateCafeMapCounter(count) {
 }
 
 function updateCafeMap() {
-    const map = ensureCafeMap();
-    // 只要地图能初始化，就隐藏 empty 提示，始终展示地图
-    if (map) {
-        cafeMapEmptyEl?.classList.add('hidden');
-    } else {
-        cafeMapEmptyEl?.classList.remove('hidden');
-        return;
-    }
-    
-    clearCafeMap();
-    
-    // 定义星星图标
-    const starIcon = L.divIcon({
-        className: 'map-star-icon',
-        html: '<i class="fas fa-star"></i>',
-        iconSize: [24, 24],
-        iconAnchor: [12, 12],
-        popupAnchor: [0, -12]
-    });
+    try {
+        // 检查 Leaflet 是否加载
+        if (typeof L === 'undefined') {
+            console.warn('Leaflet 地图库未加载，跳过地图更新');
+            return;
+        }
+        
+        const map = ensureCafeMap();
+        // 只要地图能初始化，就隐藏 empty 提示，始终展示地图
+        if (map) {
+            cafeMapEmptyEl?.classList.add('hidden');
+        } else {
+            cafeMapEmptyEl?.classList.remove('hidden');
+            return;
+        }
+        
+        clearCafeMap();
+        
+        // 定义星星图标
+        const starIcon = L.divIcon({
+            className: 'map-star-icon',
+            html: '<i class="fas fa-star"></i>',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12],
+            popupAnchor: [0, -12]
+        });
 
-    const points = cafeVisits
-        .filter(visit => Number.isFinite(parseFloat(visit.lat)) && Number.isFinite(parseFloat(visit.lng)))
-        .map(visit => ({
-            lat: parseFloat(visit.lat),
-            lng: parseFloat(visit.lng),
-            name: visit.cafeName || '探店',
-            time: (() => {
-                const value = new Date(visit.visitDatetime || visit.timestamp || Date.now()).getTime();
-                return Number.isNaN(value) ? Date.now() : value;
-            })()
-        }));
-    
-    if (!points.length) {
-        // 如果没有点，尝试使用浏览器定位设置中心，或者保持默认
-        // 这里保持默认视图，等待用户录入数据
-        // map.setView(MAP_DEFAULT_CENTER, 4); 
-        setTimeout(refreshCafeMapSize, 120);
-        return;
+        const points = cafeVisits
+            .filter(visit => {
+                try {
+                    return Number.isFinite(parseFloat(visit.lat)) && Number.isFinite(parseFloat(visit.lng));
+                } catch (e) {
+                    return false;
+                }
+            })
+            .map(visit => {
+                try {
+                    return {
+                        lat: parseFloat(visit.lat),
+                        lng: parseFloat(visit.lng),
+                        name: visit.cafeName || '探店',
+                        time: (() => {
+                            const value = new Date(visit.visitDatetime || visit.timestamp || Date.now()).getTime();
+                            return Number.isNaN(value) ? Date.now() : value;
+                        })()
+                    };
+                } catch (e) {
+                    return null;
+                }
+            })
+            .filter(Boolean);
+        
+        if (!points.length) {
+            setTimeout(() => {
+                try {
+                    refreshCafeMapSize();
+                } catch (e) {
+                    console.warn('刷新地图尺寸失败', e);
+                }
+            }, 120);
+            return;
+        }
+        
+        points.forEach(point => {
+            try {
+                const marker = L.marker([point.lat, point.lng], { icon: starIcon })
+                    .addTo(cafeMap)
+                    .bindPopup(`<b>${sanitizeHTML(point.name)}</b>`);
+                cafeMapMarkers.push(marker);
+            } catch (e) {
+                console.warn('添加地图标记失败', point, e);
+            }
+        });
+        
+        const pathPoints = [...points].sort((a, b) => a.time - b.time).map(point => [point.lat, point.lng]);
+        if (pathPoints.length >= 2) {
+            try {
+                cafeMapPath = L.polyline(pathPoints, {
+                    color: '#f59e0b',
+                    weight: 2,
+                    opacity: 0.6,
+                    dashArray: '5,5'
+                }).addTo(cafeMap);
+                map.fitBounds(cafeMapPath.getBounds().pad(0.2));
+            } catch (e) {
+                console.warn('绘制地图路径失败', e);
+            }
+        } else if (pathPoints.length === 1) {
+            try {
+                map.setView([pathPoints[0][0], pathPoints[0][1]], 13);
+            } catch (e) {
+                console.warn('设置地图视图失败', e);
+            }
+        }
+        
+        setTimeout(() => {
+            try {
+                refreshCafeMapSize();
+            } catch (e) {
+                console.warn('刷新地图尺寸失败', e);
+            }
+        }, 120);
+    } catch (error) {
+        console.error('更新地图失败', error);
+        // 地图更新失败不影响其他功能
     }
-    
-    points.forEach(point => {
-        const marker = L.marker([point.lat, point.lng], { icon: starIcon })
-            .addTo(cafeMap)
-            .bindPopup(`<b>${sanitizeHTML(point.name)}</b>`);
-        cafeMapMarkers.push(marker);
-    });
-    
-    const pathPoints = [...points].sort((a, b) => a.time - b.time).map(point => [point.lat, point.lng]);
-    if (pathPoints.length >= 2) {
-        cafeMapPath = L.polyline(pathPoints, {
-            color: '#f59e0b', // 使用星星的金色
-            weight: 2,
-            opacity: 0.6,
-            dashArray: '5,5'
-        }).addTo(cafeMap);
-        map.fitBounds(cafeMapPath.getBounds().pad(0.2));
-    } else {
-        map.setView([points[0].lat, points[0].lng], 13);
-    }
-    
-    setTimeout(refreshCafeMapSize, 120);
 }
 
 function resetCafeForm() {
-    const form = document.getElementById('cafeVisitForm');
-    if (!form) return;
-    form.reset();
-    delete form.dataset.editId;
-    updateCafeFormMode(false);
-    setVisitLatLng(null, null);
-    
-    // 隐藏地图选点器
-    const picker = document.getElementById('locationPickerWrapper');
-    if (picker) picker.classList.add('hidden');
-    
-    // 如果不是在编辑模式下取消，而是重置，保持表单展开状态（或者可以根据需求收起）
-    // 这里我们选择只在显式点击取消按钮时收起，重置按钮只清空内容
+    try {
+        const form = document.getElementById('cafeVisitForm');
+        if (!form) return;
+        
+        form.reset();
+        delete form.dataset.editId;
+        
+        try {
+            updateCafeFormMode(false);
+        } catch (e) {
+            console.warn('更新表单模式失败', e);
+        }
+        
+        try {
+            setVisitLatLng(null, null);
+        } catch (e) {
+            console.warn('重置坐标失败', e);
+        }
+        
+        // 隐藏地图选点器
+        const picker = document.getElementById('locationPickerWrapper');
+        if (picker) {
+            try {
+                picker.classList.add('hidden');
+            } catch (e) {
+                console.warn('隐藏地图选点器失败', e);
+            }
+        }
+    } catch (error) {
+        console.error('重置表单失败', error);
+        // 即使重置失败也不影响保存
+    }
 }
 
 function updateCafeFormMode(isEditing) {
@@ -2915,7 +3038,19 @@ function deleteCafeVisit(id) {
 }
 
 function saveCafeVisits() {
-    localStorage.setItem('cafeVisits', JSON.stringify(cafeVisits));
+    try {
+        const jsonData = JSON.stringify(cafeVisits);
+        localStorage.setItem('cafeVisits', jsonData);
+        console.log('探店记录已保存，共', cafeVisits.length, '条');
+    } catch (error) {
+        console.error('保存探店记录到 localStorage 失败', error);
+        // 如果是因为存储空间不足，尝试清理一些旧数据
+        if (error.name === 'QuotaExceededError') {
+            alert('存储空间不足，请删除一些旧记录后重试');
+        } else {
+            throw error; // 重新抛出其他错误
+        }
+    }
 }
 
 function formatVisitDatetime(value) {
