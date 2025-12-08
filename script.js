@@ -19,7 +19,48 @@ let currentSearchQuery = '';
 let settings = JSON.parse(localStorage.getItem('appSettings')) || {
     enableNotifications: true
 };
-let cafeVisits = JSON.parse(localStorage.getItem('cafeVisits')) || [];
+let cafeVisits = [];
+
+// Initialize localForage
+localforage.config({
+    name: 'MemoWeb',
+    storeName: 'cafe_visits_store',
+    description: 'Storage for cafe visits with images'
+});
+
+async function loadCafeVisitsFromStorage() {
+    try {
+        const stored = await localforage.getItem('cafeVisits');
+        if (stored) {
+            cafeVisits = JSON.parse(stored);
+        } else {
+            // Migration logic: Check localStorage
+            const oldData = localStorage.getItem('cafeVisits');
+            if (oldData) {
+                try {
+                    cafeVisits = JSON.parse(oldData);
+                    // Save to localForage
+                    await localforage.setItem('cafeVisits', oldData);
+                    console.log('Migrated cafe visits from localStorage to IndexedDB');
+                    // Optional: Clear old storage to free up space
+                    // localStorage.removeItem('cafeVisits');
+                } catch (e) {
+                    console.error('Migration failed', e);
+                }
+            }
+        }
+        // Update UI after loading
+        renderCafeVisits();
+        if (typeof updateCafeMap === 'function') {
+            updateCafeMap();
+        }
+    } catch (err) {
+        console.error('Failed to load cafe visits from storage', err);
+    }
+}
+
+// Start loading immediately
+loadCafeVisitsFromStorage();
 
 const defaultCoffeeMethods = [
     {
@@ -2280,7 +2321,7 @@ async function handleCafeVisitSubmit(event) {
         }
     };
     
-    const finalizeSave = (imageData) => {
+    const finalizeSave = async (imageData) => {
         // 保存之前的数据快照，用于回滚
         let previousVisit = null;
         let wasEditing = false;
@@ -2306,7 +2347,7 @@ async function handleCafeVisitSubmit(event) {
             }
             
             // 尝试保存到 localStorage（关键步骤，可能失败）
-            saveCafeVisits();
+            await saveCafeVisits();
             
             // 只有保存成功后才更新UI
             renderCafeVisits();
@@ -2358,14 +2399,14 @@ async function handleCafeVisitSubmit(event) {
         if (file && file.size) {
             try {
                 const imageData = await readFileAsDataURL(file);
-                finalizeSave(imageData);
+                await finalizeSave(imageData);
             } catch (readErr) {
                 console.warn('图片加载失败', readErr);
                 // 图片加载失败不影响保存，继续保存其他数据
-                finalizeSave(null);
+                await finalizeSave(null);
             }
         } else {
-            finalizeSave(null);
+            await finalizeSave(null);
         }
     } catch (error) {
         // 捕获保存错误（包括 QuotaExceededError）
@@ -2927,24 +2968,34 @@ function populateCafeFormForEdit(visit) {
     form.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function deleteCafeVisit(id) {
+async function deleteCafeVisit(id) {
+    // 暂存删除前的数据以便回滚
+    const originalVisits = [...cafeVisits];
+    
     cafeVisits = cafeVisits.filter(visit => visit.id !== id);
     const form = document.getElementById('cafeVisitForm');
     if (form && form.dataset.editId === id) {
         resetCafeForm();
     }
-    saveCafeVisits();
-    renderCafeVisits();
+    
+    try {
+        await saveCafeVisits();
+        renderCafeVisits();
+    } catch (error) {
+        console.error('删除失败，正在恢复...', error);
+        cafeVisits = originalVisits;
+        alert('删除失败，可能是存储空间问题');
+        renderCafeVisits();
+    }
 }
 
-function saveCafeVisits() {
+async function saveCafeVisits() {
     try {
         const jsonData = JSON.stringify(cafeVisits);
-        localStorage.setItem('cafeVisits', jsonData);
+        await localforage.setItem('cafeVisits', jsonData);
     } catch (error) {
         // 重新抛出错误，让调用者知道保存失败
-        // 特别是 QuotaExceededError，必须传播给调用者
-        console.error('保存探店记录到 localStorage 失败', error);
+        console.error('保存探店记录到 Storage 失败', error);
         throw error;
     }
 }
