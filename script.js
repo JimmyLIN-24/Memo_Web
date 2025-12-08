@@ -2247,32 +2247,69 @@ async function handleCafeVisitSubmit(event) {
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
     }
     
-    const visit = {
-        id: editingId || `visit-${Date.now()}`,
-        cafeName: cafeName,
-        visitDatetime: visitDatetime,
-        location: getTrimmedFormValue(formData, 'visitLocation'),
-        beans: getTrimmedFormValue(formData, 'visitBeans'),
-        notes: getTrimmedFormValue(formData, 'visitNotes'),
-        rating: parseFloat(formData.get('visitRating')) || 0,
-        lat: parseFloat(formData.get('visitLat')) || null,
-        lng: parseFloat(formData.get('visitLng')) || null
+    // 恢复按钮状态的函数（确保总是能恢复）
+    const restoreButton = () => {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalBtnText;
+        }
     };
     
-    // 如果有地址但没有坐标，尝试自动编码
-    if ((!visit.lat || !visit.lng) && visit.location) {
-        try {
-            const geocodeResult = await geocodeLocation(visit.location);
-            if (geocodeResult) {
-                visit.lat = geocodeResult.lat;
-                visit.lng = geocodeResult.lng;
-            }
-        } catch (e) {
-            console.warn('自动地理编码失败', e);
-        }
-    }
+    let imageData = null;
     
-    const finalizeSave = (imageData) => {
+    try {
+        const visit = {
+            id: editingId || `visit-${Date.now()}`,
+            cafeName: cafeName,
+            visitDatetime: visitDatetime,
+            location: getTrimmedFormValue(formData, 'visitLocation'),
+            beans: getTrimmedFormValue(formData, 'visitBeans'),
+            notes: getTrimmedFormValue(formData, 'visitNotes'),
+            rating: parseFloat(formData.get('visitRating')) || 0,
+            lat: parseFloat(formData.get('visitLat')) || null,
+            lng: parseFloat(formData.get('visitLng')) || null
+        };
+        
+        // 如果有地址但没有坐标，尝试自动编码（带超时）
+        if ((!visit.lat || !visit.lng) && visit.location) {
+            try {
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Geocoding timeout')), 3000)
+                );
+                
+                const geocodeResult = await Promise.race([
+                    geocodeLocation(visit.location),
+                    timeoutPromise
+                ]);
+                
+                if (geocodeResult) {
+                    visit.lat = geocodeResult.lat;
+                    visit.lng = geocodeResult.lng;
+                }
+            } catch (e) {
+                console.warn('自动地理编码失败或超时', e);
+                // 继续执行，不中断
+            }
+        }
+        
+        // 读取图片（带超时保护）
+        const file = formData.get('visitPhoto');
+        if (file && file.size > 0) {
+            try {
+                // 图片读取超时：10秒
+                const imageTimeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Image read timeout')), 10000)
+                );
+                
+                const imageReadPromise = readFileAsDataURL(file);
+                imageData = await Promise.race([imageReadPromise, imageTimeoutPromise]);
+            } catch (readErr) {
+                console.warn('读取图片失败或超时', readErr);
+                imageData = null; // 继续保存，只是没有图片
+            }
+        }
+        
+        // 执行保存
         if (editingId && existingIndex > -1) {
             const previous = cafeVisits[existingIndex];
             cafeVisits[existingIndex] = {
@@ -2287,6 +2324,7 @@ async function handleCafeVisitSubmit(event) {
                 image: typeof imageData === 'string' ? imageData : ''
             });
         }
+        
         saveCafeVisits();
         renderCafeVisits();
         resetCafeForm();
@@ -2296,23 +2334,13 @@ async function handleCafeVisitSubmit(event) {
         const showBtn = document.getElementById('showCafeFormBtn');
         if (showBtn) showBtn.style.display = 'flex';
         
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = originalBtnText;
-        }
-    };
-    
-    try {
-        const file = formData.get('visitPhoto');
-        if (file && file.size) {
-            const imageData = await readFileAsDataURL(file);
-            finalizeSave(imageData);
-        } else {
-            finalizeSave(null);
-        }
+        // 恢复按钮
+        restoreButton();
+        
     } catch (error) {
-        console.warn('图片加载失败', error);
-        finalizeSave(null);
+        console.error('保存探店记录时发生错误', error);
+        alert('保存失败，请重试。如果问题持续，请检查网络连接。');
+        restoreButton();
     }
 }
 
@@ -2617,8 +2645,16 @@ function updatePickerMarker(lat, lng) {
 async function geocodeLocation(query) {
     if (!query) return null;
     try {
-        // 使用高德地理编码 API
-        const response = await fetch(`https://restapi.amap.com/v3/geocode/geo?key=${AMAP_KEY}&address=${encodeURIComponent(query)}`);
+        // 使用高德地理编码 API，增加 AbortController 控制超时
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3秒网络超时
+        
+        const response = await fetch(`https://restapi.amap.com/v3/geocode/geo?key=${AMAP_KEY}&address=${encodeURIComponent(query)}`, {
+            signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
         if (!response.ok) return null;
         const data = await response.json();
         
@@ -2943,10 +2979,45 @@ function getTrimmedFormValue(formData, key) {
 
 function readFileAsDataURL(file) {
     return new Promise((resolve, reject) => {
+        // 检查文件大小，超过5MB给出警告但继续尝试
+        if (file.size > 5 * 1024 * 1024) {
+            console.warn('图片文件较大，读取可能需要更长时间');
+        }
+        
         const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(file);
+        let isResolved = false;
+        
+        const cleanup = () => {
+            isResolved = true;
+        };
+        
+        reader.onload = () => {
+            if (!isResolved) {
+                cleanup();
+                resolve(reader.result);
+            }
+        };
+        
+        reader.onerror = () => {
+            if (!isResolved) {
+                cleanup();
+                reject(reader.error || new Error('文件读取失败'));
+            }
+        };
+        
+        reader.onabort = () => {
+            if (!isResolved) {
+                cleanup();
+                reject(new Error('文件读取被中断'));
+            }
+        };
+        
+        try {
+            reader.readAsDataURL(file);
+        } catch (err) {
+            cleanup();
+            reject(err);
+        }
     });
 }
 
