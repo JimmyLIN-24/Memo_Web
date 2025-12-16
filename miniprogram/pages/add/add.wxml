@@ -1,0 +1,71 @@
+<!--pages/add/add.wxml-->
+<view class="container">
+  <form>
+    <!-- Quick Select -->
+    <view class="section quick-select">
+      <view class="section-title">快速选择</view>
+      <scroll-view scroll-x class="quick-scroll" enable-flex>
+        <view class="quick-tag" wx:for="{{quickItems}}" wx:key="*this" bindtap="selectQuickItem" data-name="{{item}}">{{item}}</view>
+      </scroll-view>
+    </view>
+
+    <view class="form-group">
+      <view class="label">物品名称</view>
+      <input class="input" placeholder="请输入名称" value="{{item.name}}" bindinput="onNameInput" />
+    </view>
+
+    <view class="form-row">
+      <view class="form-group flex-1">
+        <view class="label">数量</view>
+        <input class="input" type="number" value="{{item.quantity}}" bindinput="onQuantityInput" />
+      </view>
+      <view class="form-group flex-1">
+        <view class="label">单位</view>
+        <input class="input" placeholder="个/包" value="{{item.unit}}" bindinput="onUnitInput" />
+      </view>
+    </view>
+
+    <view class="form-group">
+      <view class="label">分类</view>
+      <picker bindchange="bindCategoryChange" value="{{categoryIndex}}" range="{{categories}}" range-key="name">
+        <view class="picker">
+          {{categories[categoryIndex].name}}
+        </view>
+      </picker>
+    </view>
+
+    <view class="form-group">
+      <view class="label">存放地点</view>
+      <input class="input" placeholder="例如：冰箱" value="{{item.location}}" bindinput="onLocationInput" />
+    </view>
+
+    <view class="form-group">
+      <view class="label">保质期</view>
+      <picker mode="date" value="{{item.expiry}}" bindchange="bindDateChange">
+        <view class="picker">
+          {{item.expiry || '选择日期'}}
+        </view>
+      </picker>
+    </view>
+
+    <view class="advanced-section">
+      <view class="section-title">高级设置</view>
+      <view class="form-row">
+        <view class="form-group flex-1">
+          <view class="label">库存预警</view>
+          <input class="input" type="number" placeholder="0" value="{{item.threshold}}" bindinput="onThresholdInput" />
+        </view>
+        <view class="form-group flex-1">
+          <view class="label">过期提醒(天)</view>
+          <input class="input" type="number" placeholder="30" value="{{item.expiryWarningDays}}" bindinput="onWarningDaysInput" />
+        </view>
+      </view>
+    </view>
+
+    <view class="actions">
+      <button class="btn btn-primary" bindtap="saveItem">保存</button>
+      <button wx:if="{{isEdit}}" class="btn btn-danger" bindtap="deleteItem" style="margin-top: 20rpx; background: #fee2e2; color: #ef4444;">删除</button>
+    </view>
+  </form>
+</view>
+

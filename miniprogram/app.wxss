@@ -1,0 +1,146 @@
+/** app.wxss **/
+page {
+  --primary: #6366f1;
+  --secondary: #8b5cf6;
+  --accent: #f59e0b;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --pink: #ff6b9d;
+  --pink-light: #ffa8cc;
+  --warm-yellow: #fff3cd;
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-500: #6b7280;
+  --gray-700: #374151;
+  --gray-900: #111827;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-soft: 0 10px 30px rgba(255, 107, 157, 0.2);
+  --shadow-hover: 0 15px 40px rgba(255, 107, 157, 0.3);
+  --radius: 24rpx; /* converted from 0.75rem approx */
+  
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica,
+    Segoe UI, Arial, Roboto, 'PingFang SC', 'miui', 'Hiragino Sans GB', 'Microsoft Yahei',
+    sans-serif;
+}
+
+.container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+}
+
+/* Global Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-content {
+    width: 90%;
+    max-height: 85%;
+    background: white;
+    border-radius: 32rpx;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-hover);
+    overflow: hidden;
+}
+
+.modal-header {
+    padding: 24rpx 30rpx;
+    border-bottom: 1px solid var(--gray-200);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fff;
+    flex-shrink: 0;
+}
+
+.modal-header .h3 { 
+    font-size: 34rpx; 
+    font-weight: bold; 
+    color: var(--text-primary);
+}
+
+/* Optimized Close Button */
+.modal-close {
+    width: 64rpx;
+    height: 64rpx;
+    background: var(--gray-100);
+    border-radius: 16rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36rpx;
+    color: var(--gray-500);
+    font-weight: bold;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.modal-close:active {
+    background: var(--gray-200);
+    transform: scale(0.95);
+}
+
+.modal-body {
+    padding: 30rpx;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    flex: 1;
+}
+
+/* Global Input Styles */
+.input, .picker {
+    width: 100%;
+    height: 88rpx;
+    min-height: 88rpx; /* Ensure height */
+    line-height: 88rpx; /* Center text vertically */
+    border: 2rpx solid var(--gray-300);
+    border-radius: 16rpx;
+    padding: 0 24rpx;
+    font-size: 30rpx;
+    box-sizing: border-box;
+    display: block; /* Ensure block display */
+    background: var(--gray-50);
+    color: var(--text-primary);
+}
+
+.input:focus {
+    border-color: var(--primary);
+    background: white;
+    box-shadow: 0 0 0 4rpx rgba(99, 102, 241, 0.1);
+}
+
+/* Textarea needs different handling */
+textarea.textarea {
+    width: 100%;
+    height: 160rpx;
+    line-height: 1.5;
+    padding: 20rpx 24rpx;
+    border: 2rpx solid var(--gray-300);
+    border-radius: 16rpx;
+    font-size: 30rpx;
+    box-sizing: border-box;
+    background: var(--gray-50);
+}

@@ -1,0 +1,237 @@
+/* pages/index/index.wxss */
+page {
+  height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #ff6b9d 50%, #ffba5a 75%, #ffa8cc 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 8s ease infinite;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.landing-page {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.landing-container {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 60rpx;
+  padding: 60rpx 40rpx;
+  width: 85%;
+  max-width: 600rpx;
+  text-align: center;
+  box-shadow: var(--shadow-soft);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Shimmer effect simulation */
+.landing-container::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transform: rotate(45deg);
+  animation: shimmer 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%) rotate(45deg); }
+  100% { transform: translateX(100%) rotate(45deg); }
+}
+
+.avatar-container {
+  position: relative;
+  margin-bottom: 40rpx;
+  display: inline-block;
+}
+
+.user-avatar {
+  width: 240rpx;
+  height: 240rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--pink), var(--pink-light));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-soft);
+  position: relative;
+  margin: 0 auto;
+  animation: bounce 2s ease-in-out infinite;
+}
+
+.user-avatar::after {
+    content: '👧🏻';
+    font-size: 100rpx;
+    display: block;
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-20rpx); }
+  60% { transform: translateY(-10rpx); }
+}
+
+.sparkle {
+  position: absolute;
+  color: var(--accent);
+  font-size: 30rpx;
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+.s1 { top: 20%; right: 20%; animation-delay: 0s; }
+.s2 { bottom: 20%; left: 15%; animation-delay: 0.5s; }
+.s3 { top: 60%; right: 10%; animation-delay: 1s; }
+
+@keyframes sparkle {
+  0%, 100% { opacity: 0; transform: scale(0) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1) rotate(180deg); }
+}
+
+.welcome-text {
+  margin-bottom: 40rpx;
+}
+
+.h1 {
+  font-size: 50rpx;
+  font-weight: 700;
+  background-image: linear-gradient(135deg, var(--pink), var(--accent));
+  -webkit-background-clip: text; /* Note: standard background-clip: text doesn't always work in WXSS without webkit prefix on some devices */
+  background-clip: text;
+  color: transparent; /* Fallback needs care in MP */
+  margin-bottom: 10rpx;
+  display: inline-block;
+}
+/* Fallback for text gradient if not supported well in some MP environments, usually okay though */
+.h1 {
+    color: var(--pink); 
+}
+
+.subtitle {
+  font-size: 32rpx;
+  color: var(--text-secondary);
+  margin-bottom: 10rpx;
+}
+
+.description {
+  font-size: 28rpx;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.login-section {
+    margin-bottom: 30rpx;
+}
+
+.login-input {
+    width: 100%;
+    height: 80rpx;
+    border: 1px solid rgba(0,0,0,0.1);
+    background: rgba(255,255,255,0.5);
+    border-radius: 40rpx;
+    padding: 0 40rpx;
+    font-size: 28rpx;
+    box-sizing: border-box;
+    text-align: center;
+}
+
+.enter-button {
+  background: linear-gradient(135deg, var(--pink), var(--pink-light));
+  color: white;
+  border: none;
+  padding: 20rpx 50rpx;
+  border-radius: 100rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  box-shadow: var(--shadow-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10rpx;
+  width: 100%;
+}
+
+.secondary-btn {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    font-size: 28rpx;
+    padding: 16rpx 40rpx;
+}
+
+.logout-main-btn {
+    background: linear-gradient(135deg, var(--pink), var(--pink-light)); 
+    font-size: 26rpx; 
+    padding: 12rpx 30rpx; 
+    border-radius: 50rpx; 
+  color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10rpx;
+}
+
+.feature-icons {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 40rpx;
+  opacity: 0.7;
+}
+
+.feature-icon {
+  font-size: 40rpx;
+  color: var(--pink);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.i2 { animation-delay: 0.3s; }
+.i3 { animation-delay: 0.6s; }
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.1); opacity: 1; }
+}
+
+.floating-elements {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.floating-shape {
+  position: absolute;
+  opacity: 0.1;
+  font-size: 60rpx;
+  animation: floatAround 20s ease-in-out infinite;
+}
+
+.shape-1 { top: 20%; left: 10%; color: var(--pink); animation-delay: 0s; }
+.shape-2 { top: 60%; right: 15%; color: var(--accent); animation-delay: 3s; }
+.shape-3 { bottom: 30%; left: 20%; color: var(--secondary); animation-delay: 6s; }
+
+@keyframes floatAround {
+  0%, 100% { transform: translateY(0rpx) rotate(0deg); }
+  25% { transform: translateY(-40rpx) rotate(90deg); }
+  50% { transform: translateY(0rpx) rotate(180deg); }
+  75% { transform: translateY(40rpx) rotate(270deg); }
+}

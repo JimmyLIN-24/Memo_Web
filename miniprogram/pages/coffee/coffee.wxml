@@ -1,0 +1,211 @@
+<!-- pages/coffee/coffee.wxml -->
+<view class="coffee-container">
+  <!-- Header -->
+  <view class="coffee-header">
+    <view class="header-row">
+      <view class="title">
+        <text>☕</text>
+        <text>咖啡小宇宙</text>
+      </view>
+      <view class="close-btn" bindtap="goBack">×</view>
+    </view>
+    <view class="tabs">
+      <view class="tab-btn {{activeTab === 'methods' ? 'active' : ''}}" bindtap="switchTab" data-tab="methods">
+        <text>🌱</text>
+        <text>冲煮手册</text>
+      </view>
+      <view class="tab-btn {{activeTab === 'journal' ? 'active' : ''}}" bindtap="switchTab" data-tab="journal">
+        <text>📍</text>
+        <text>探店手账</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- Methods Content -->
+  <view class="coffee-content" wx:if="{{activeTab === 'methods'}}">
+    <view class="section-header">
+      <view class="section-titles">
+        <text class="section-label">常见冲煮方式</text>
+        <view class="h3">小香香的手冲清单</view>
+      </view>
+      <view class="pill-btn" bindtap="showMethodForm">
+        <text>＋</text>
+        <text>新增方式</text>
+      </view>
+    </view>
+
+    <view class="methods-grid">
+      <block wx:for="{{methods}}" wx:key="id">
+        <view class="method-card">
+          <view class="method-header">
+            <view class="method-title-row">
+              <text class="method-icon">{{item.icon || '☕'}}</text>
+              <text class="method-name">{{item.name}}</text>
+            </view>
+            <view class="method-actions">
+              <view class="action-icon" bindtap="editMethod" data-id="{{item.id}}">✏️</view>
+              <view class="action-icon" bindtap="deleteMethod" data-id="{{item.id}}">🗑️</view>
+            </view>
+          </view>
+          <view class="method-summary">{{item.summary}}</view>
+          
+          <view class="method-metrics">
+            <block wx:for="{{item.metrics}}" wx:key="label" wx:for-item="metric">
+              <view class="metric-item">
+                <text class="metric-label">{{metric.label}}</text>
+                <text class="metric-value">{{metric.value}}</text>
+              </view>
+            </block>
+          </view>
+          
+          <view class="method-footer">
+             <text style="font-size: 24rpx; color: #666; margin-bottom: 10rpx;">{{item.notes}}</text>
+             <view class="method-rating">
+                <text>评分：{{item.rating}} / 5</text>
+             </view>
+          </view>
+        </view>
+      </block>
+    </view>
+  </view>
+
+  <!-- Journal Content -->
+  <view class="coffee-content" wx:if="{{activeTab === 'journal'}}">
+    <view class="section-header">
+      <view class="section-titles">
+        <text class="section-label">Cafe Hopping</text>
+        <view class="h3">探店记录手账</view>
+      </view>
+      <view class="pill-btn" bindtap="showJournalForm">
+        <text>🖊️</text>
+        <text>记录探店</text>
+      </view>
+    </view>
+
+    <!-- Map -->
+    <view class="map-container">
+      <map 
+        class="map" 
+        id="cafeMap"
+        latitude="{{mapLat}}" 
+        longitude="{{mapLng}}" 
+        scale="12" 
+        markers="{{mapMarkers}}"
+        show-location
+      ></map>
+    </view>
+
+    <view class="journal-list">
+      <block wx:for="{{visits}}" wx:key="id">
+        <view class="journal-card">
+          <view class="journal-header">
+            <view>
+               <text class="shop-name">{{item.name}}</text>
+               <text class="visit-date">{{item.date}}</text>
+            </view>
+            <view class="method-actions">
+               <view class="action-icon" bindtap="deleteVisit" data-id="{{item.id}}">🗑️</view>
+            </view>
+          </view>
+          
+          <image wx:if="{{item.photo}}" src="{{item.photo}}" class="journal-photo" mode="aspectFill" bindtap="previewImage" data-src="{{item.photo}}"></image>
+          
+          <view class="journal-meta" wx:if="{{item.location}}">
+             <text>📍 {{item.location}}</text>
+          </view>
+          <view class="journal-meta" wx:if="{{item.beans}}">
+             <text>🫘 {{item.beans}}</text>
+          </view>
+          
+          <view class="journal-notes">
+            {{item.notes}}
+          </view>
+        </view>
+      </block>
+    </view>
+  </view>
+</view>
+
+<!-- Common Modal Overlay -->
+<view class="modal-overlay {{showModal ? 'active' : ''}}" wx:if="{{showModal}}">
+  <view class="modal-content">
+    <view class="modal-header">
+      <view class="h3">{{modalTitle}}</view>
+      <view class="modal-close" bindtap="closeModal">×</view>
+    </view>
+    <scroll-view scroll-y class="modal-body">
+      
+      <!-- Method Form -->
+      <view class="form-container" wx:if="{{formType === 'method'}}">
+        <view class="row">
+             <view class="form-group">
+                <text class="label">小图标</text>
+                <input class="input" value="{{methodForm.icon}}" bindinput="onMethodInput" data-field="icon" placeholder="☕" />
+            </view>
+            <view class="form-group">
+                <text class="label">名称</text>
+                <input class="input" value="{{methodForm.name}}" bindinput="onMethodInput" data-field="name" placeholder="例如：手冲" />
+            </view>
+        </view>
+        <view class="form-group">
+            <text class="label">一句话描述</text>
+            <input class="input" value="{{methodForm.summary}}" bindinput="onMethodInput" data-field="summary" />
+        </view>
+        <view class="form-group">
+            <text class="label">详细备注</text>
+            <textarea class="textarea" value="{{methodForm.notes}}" bindinput="onMethodInput" data-field="notes"></textarea>
+        </view>
+        <view class="form-group">
+            <text class="label">参数 (标签 - 数值)</text>
+            <block wx:for="{{methodForm.metrics}}" wx:key="index">
+                <view class="metric-row">
+                    <input class="input" style="flex:1" value="{{item.label}}" bindinput="onMetricInput" data-index="{{index}}" data-key="label" placeholder="温度" />
+                    <input class="input" style="flex:1" value="{{item.value}}" bindinput="onMetricInput" data-index="{{index}}" data-key="value" placeholder="90度" />
+                    <view class="remove-btn" bindtap="removeMetric" data-index="{{index}}">×</view>
+                </view>
+            </block>
+            <view class="add-metric-btn" bindtap="addMetric">＋ 添加参数</view>
+        </view>
+        <button class="btn btn-primary" style="width:100%" bindtap="saveMethod">保存冲煮方式</button>
+      </view>
+
+      <!-- Journal Form -->
+      <view class="form-container" wx:if="{{formType === 'journal'}}">
+        <view class="form-group">
+            <text class="label">店名</text>
+            <input class="input" value="{{journalForm.name}}" bindinput="onJournalInput" data-field="name" placeholder="例如：Seesaw" />
+        </view>
+        <view class="form-group">
+            <text class="label">日期</text>
+            <picker mode="date" value="{{journalForm.date}}" bindchange="onDateChange">
+                 <view class="input">{{journalForm.date || '选择日期'}}</view>
+            </picker>
+        </view>
+        <view class="form-group">
+            <text class="label">地点 (点击定位)</text>
+            <view class="location-picker">
+                <input class="input" value="{{journalForm.location}}" bindinput="onJournalInput" data-field="location" placeholder="城市/商场" />
+                <view class="location-btn" bindtap="chooseLocation">📍</view>
+            </view>
+        </view>
+        <view class="form-group">
+            <text class="label">豆子/饮品</text>
+            <input class="input" value="{{journalForm.beans}}" bindinput="onJournalInput" data-field="beans" />
+        </view>
+        <view class="form-group">
+            <text class="label">照片</text>
+            <view class="image-picker" bindtap="choosePhoto">
+                <image wx:if="{{journalForm.photo}}" src="{{journalForm.photo}}" class="picked-image" mode="aspectFill"></image>
+                <text wx:else>📷 点击上传照片</text>
+            </view>
+        </view>
+        <view class="form-group">
+            <text class="label">笔记</text>
+            <textarea class="textarea" value="{{journalForm.notes}}" bindinput="onJournalInput" data-field="notes"></textarea>
+        </view>
+        <button class="btn btn-primary" style="width:100%" bindtap="saveJournal">收藏探店</button>
+      </view>
+
+    </scroll-view>
+  </view>
+</view>

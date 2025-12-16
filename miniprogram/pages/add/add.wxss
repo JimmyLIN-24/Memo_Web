@@ -1,0 +1,70 @@
+/* pages/add/add.wxss */
+.container {
+  padding: 30rpx;
+  background: white;
+}
+
+.section {
+  margin-bottom: 40rpx;
+}
+
+.section-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 20rpx;
+}
+
+.quick-scroll {
+  display: flex;
+  white-space: nowrap;
+  padding-bottom: 10rpx;
+}
+
+.quick-tag {
+  display: inline-block;
+  padding: 12rpx 24rpx;
+  background: var(--gray-100);
+  border-radius: 30rpx;
+  margin-right: 20rpx;
+  font-size: 26rpx;
+  color: var(--text-primary);
+}
+
+.form-group {
+  margin-bottom: 30rpx;
+}
+
+.label {
+  font-size: 28rpx;
+  color: var(--text-secondary);
+  margin-bottom: 12rpx;
+}
+
+.input, .picker {
+  background: var(--gray-50);
+  padding: 24rpx;
+  border-radius: 12rpx;
+  font-size: 30rpx;
+  border: 1rpx solid var(--gray-200);
+}
+
+.form-row {
+  display: flex;
+  gap: 20rpx;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.advanced-section {
+  margin-top: 40rpx;
+  padding-top: 40rpx;
+  border-top: 1rpx solid var(--gray-200);
+}
+
+.actions {
+  margin-top: 60rpx;
+}
+

@@ -1,0 +1,40 @@
+<!--pages/landing/landing.wxml-->
+<view class="container landing-container">
+  <view class="avatar-container">
+    <view class="user-avatar">
+      <view class="sparkle s1">✨</view>
+      <view class="sparkle s2">💖</view>
+      <view class="sparkle s3">🌟</view>
+    </view>
+  </view>
+
+  <view class="welcome-text">
+    <view class="h1">欢迎回来</view>
+    <view class="subtitle">小香香Grace 💕</view>
+    <view class="description">
+      <text>管理您的物品清单，从未如此简单美好~\n让我们一起打造整洁有序的生活吧！</text>
+    </view>
+  </view>
+
+  <button class="enter-button" bindtap="enterApp">
+    <text class="icon">♥</text> 进入我的清单世界
+  </button>
+  
+  <button class="enter-button secondary" bindtap="enterApp" style="margin-top: 20rpx; background: linear-gradient(135deg, #667eea, #764ba2);">
+    <text class="icon">📋</text> 直接进入应用
+  </button>
+
+  <view class="feature-icons">
+    <view class="feature-icon">📱</view>
+    <view class="feature-icon">🎯</view>
+    <view class="feature-icon">✅</view>
+  </view>
+
+  <!-- Background elements -->
+  <view class="floating-elements">
+    <view class="floating-shape f1">🌸</view>
+    <view class="floating-shape f2">✨</view>
+    <view class="floating-shape f3">🎀</view>
+  </view>
+</view>
+

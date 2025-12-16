@@ -1,0 +1,57 @@
+<!-- pages/index/index.wxml -->
+<view class="container landing-page">
+  <view class="floating-elements">
+    <view class="floating-shape shape-1">🌸</view>
+    <view class="floating-shape shape-2">✨</view>
+    <view class="floating-shape shape-3">🎀</view>
+    </view>
+
+  <view class="landing-container">
+    <view class="avatar-container">
+      <view class="user-avatar">
+        <view class="sparkle s1">✨</view>
+        <view class="sparkle s2">💖</view>
+        <view class="sparkle s3">🌟</view>
+    </view>
+  </view>
+
+    <view class="welcome-text">
+      <view class="h1">欢迎回来</view>
+      <view class="subtitle">{{currentUser === 'Grace1013' ? '尊贵的小香香Grace👑' : '小香香Grace 💕'}}</view>
+      <view class="description">
+        <text>管理您的物品清单，从未如此简单美好~\n让我们一起打造整洁有序的生活吧！</text>
+    </view>
+  </view>
+
+    <!-- Login Input Section -->
+    <view class="login-section">
+        <input class="login-input" placeholder="输入专属暗号进入秘密基地..." password type="text" bindinput="onInputChange" value="{{inputUsername}}" />
+    </view>
+
+    <button class="enter-button" bindtap="enterApp">
+      <text class="icon">❤️</text>
+      <text>{{currentUser === 'Grace1013' ? '进入专属仓库' : '进入我的清单世界'}}</text>
+    </button>
+    
+    <view style="margin-top: 30rpx;" wx:if="{{!currentUser}}">
+        <button class="enter-button secondary-btn" bindtap="enterAppAsGuest">
+            <text class="icon">📋</text>
+            <text>游客/普通模式进入</text>
+        </button>
+        </view>
+
+    <!-- 退出登录按钮 -->
+    <view wx:if="{{isLoggedIn}}" class="logout-section" style="margin-top: 30rpx;">
+        <button class="logout-main-btn" bindtap="logout">
+            <text class="icon">🚪</text>
+            <text>退出登录</text>
+        </button>
+      </view>
+
+    <view class="feature-icons">
+      <view class="feature-icon i1">📱</view>
+      <view class="feature-icon i2">🎯</view>
+      <view class="feature-icon i3">✅</view>
+      </view>
+  </view>
+</view>

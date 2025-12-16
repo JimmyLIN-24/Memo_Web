@@ -1,0 +1,59 @@
+<!--pages/game/game.wxml-->
+<view class="container">
+  <view class="header">
+    <view class="title">🎮 记忆翻牌</view>
+    <view wx:if="{{isPlaying}}" class="status">
+      <text>匹配: {{matchedPairs}}/{{currentLevel.pairs}}</text>
+      <view class="btn-group">
+        <button class="btn-mini" bindtap="restart">🔄</button>
+        <button class="btn-mini" bindtap="backToLevels">⬅️</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- Level Selection -->
+  <view class="level-select" wx:if="{{!isPlaying}}">
+    <view class="level-grid">
+      <view 
+        class="level-card {{unlockedLevels.indexOf(item.id) !== -1 ? 'unlocked' : 'locked'}}" 
+        wx:for="{{levels}}" 
+        wx:key="id"
+        bindtap="selectLevel"
+        data-id="{{item.id}}"
+      >
+        <view class="level-num">{{item.name}}</view>
+        <view class="level-size">{{item.label}}</view>
+        <view class="lock-icon">{{unlockedLevels.indexOf(item.id) !== -1 ? '🔓' : '🔒'}}</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- Game Board -->
+  <view class="game-board" wx:if="{{isPlaying}}">
+    <view class="cards-grid grid-{{currentLevel.size}}">
+      <view 
+        class="card {{item.flipped || item.matched ? 'flipped' : ''}} {{item.matched ? 'matched' : ''}}" 
+        wx:for="{{cards}}" 
+        wx:key="id"
+        bindtap="onCardTap"
+        data-index="{{index}}"
+      >
+        <view class="card-face card-front">{{item.content}}</view>
+        <view class="card-face card-back">❓</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- Win Modal -->
+  <view class="win-overlay" wx:if="{{showWin}}">
+    <view class="win-content">
+      <view class="win-title">恭喜通关！🎉</view>
+      <view class="win-stars">⭐⭐⭐</view>
+      <view class="win-actions">
+        <button class="btn btn-primary" bindtap="nextLevel">下一关</button>
+        <button class="btn btn-secondary" bindtap="backToLevels">返回关卡</button>
+      </view>
+    </view>
+  </view>
+</view>
+

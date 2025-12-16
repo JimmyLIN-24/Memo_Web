@@ -20,6 +20,7 @@ let settings = JSON.parse(localStorage.getItem('appSettings')) || {
     enableNotifications: true
 };
 let cafeVisits = [];
+let cookingRecipes = [];
 
 // Initialize localForage
 localforage.config({
@@ -3138,4 +3139,266 @@ function filterItems(items, query) {
         
         return false;
     });
-} 
+}
+
+
+// ==========================================
+// 美食厨房 (Cooking Hub) 功能逻辑
+// ==========================================
+
+// 初始化 Cooking 模块
+function initCooking() {
+    const cookingBtn = document.getElementById('cookingBtn');
+    const cookingOverlay = document.getElementById('cookingOverlay');
+    const cookingCloseBtn = document.getElementById('cookingCloseBtn');
+    const addRecipeBtn = document.getElementById('addRecipeBtn');
+    const recipeFormWrapper = document.getElementById('cookingRecipeFormWrapper');
+    const recipeFormCancelBtn = document.getElementById('recipeFormCancelBtn');
+    const recipeForm = document.getElementById('cookingRecipeForm');
+    const cancelRecipeEditBtn = document.getElementById('cancelRecipeEdit');
+
+    // 打开面板
+    if (cookingBtn) {
+        cookingBtn.addEventListener('click', () => {
+            if (cookingOverlay) {
+                cookingOverlay.classList.add('active');
+                renderCookingRecipes();
+            }
+        });
+    }
+
+    // 关闭面板
+    if (cookingCloseBtn) {
+        cookingCloseBtn.addEventListener('click', () => {
+            if (cookingOverlay) {
+                cookingOverlay.classList.remove('active');
+            }
+        });
+    }
+
+    // 切换表单显示
+    if (addRecipeBtn) {
+        addRecipeBtn.addEventListener('click', () => {
+            if (recipeFormWrapper) {
+                resetRecipeForm();
+                recipeFormWrapper.classList.remove('hidden');
+                document.getElementById('recipeFormTitle').textContent = '新增菜谱';
+                if(cancelRecipeEditBtn) cancelRecipeEditBtn.classList.add('hidden');
+            }
+        });
+    }
+
+    // 取消表单 (底部的收起按钮)
+    if (recipeFormCancelBtn) {
+        recipeFormCancelBtn.addEventListener('click', () => {
+            if (recipeFormWrapper) {
+                recipeFormWrapper.classList.add('hidden');
+                resetRecipeForm();
+            }
+        });
+    }
+
+    // 取消编辑 (顶部的取消按钮)
+    if (cancelRecipeEditBtn) {
+        cancelRecipeEditBtn.addEventListener('click', () => {
+             if (recipeFormWrapper) {
+                recipeFormWrapper.classList.add('hidden');
+                resetRecipeForm();
+            }
+        });
+    }
+
+    // 提交表单
+    if (recipeForm) {
+        recipeForm.addEventListener('submit', handleRecipeSubmit);
+    }
+}
+
+// 重置表单
+function resetRecipeForm() {
+    const form = document.getElementById('cookingRecipeForm');
+    if (form) {
+        form.reset();
+        const idField = document.getElementById('recipeIdField');
+        if (idField) idField.value = '';
+        
+        // 设置默认日期为今天
+        const dateField = document.getElementById('recipeUpdated');
+        if (dateField) {
+            dateField.valueAsDate = new Date();
+        }
+    }
+}
+
+// 处理表单提交
+async function handleRecipeSubmit(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const id = document.getElementById('recipeIdField').value; // FormData sometimes misses hidden if not name? use ID directly
+    const isEdit = !!id;
+    
+    const newRecipe = {
+        id: isEdit ? id : Date.now().toString(),
+        icon: document.getElementById('recipeIcon').value.trim() || '🍳',
+        updated: document.getElementById('recipeUpdated').value || new Date().toISOString().split('T')[0],
+        name: document.getElementById('recipeName').value.trim(),
+        tags: document.getElementById('recipeTags').value.split(/[,，]/).map(t => t.trim()).filter(t => t),
+        ingredients: document.getElementById('recipeIngredients').value.trim(),
+        steps: document.getElementById('recipeSteps').value.trim()
+    };
+
+    if (isEdit) {
+        const index = cookingRecipes.findIndex(r => r.id === id);
+        if (index !== -1) {
+            cookingRecipes[index] = newRecipe;
+        }
+    } else {
+        cookingRecipes.unshift(newRecipe);
+    }
+
+    await saveCookingRecipes();
+    renderCookingRecipes();
+    
+    const wrapper = document.getElementById('cookingRecipeFormWrapper');
+    if (wrapper) wrapper.classList.add('hidden');
+    resetRecipeForm();
+    
+    if (typeof showMessage === 'function') {
+        showMessage(isEdit ? '菜谱已更新' : '新菜谱已添加', 'success');
+    }
+}
+
+// 保存数据
+async function saveCookingRecipes() {
+    try {
+        await localforage.setItem('cookingRecipes', JSON.stringify(cookingRecipes));
+    } catch (err) {
+        console.error('Failed to save cooking recipes', err);
+        // Fallback
+        localStorage.setItem('cookingRecipes', JSON.stringify(cookingRecipes));
+    }
+}
+
+// 加载数据
+async function loadCookingRecipes() {
+    try {
+        const stored = await localforage.getItem('cookingRecipes');
+        if (stored) {
+            cookingRecipes = JSON.parse(stored);
+        } else {
+             // Fallback
+            const local = localStorage.getItem('cookingRecipes');
+             if (local) {
+                cookingRecipes = JSON.parse(local);
+             }
+        }
+    } catch (err) {
+        console.error('Failed to load cooking recipes', err);
+    }
+}
+
+// 渲染列表
+function renderCookingRecipes() {
+    const list = document.getElementById('cookingRecipeList');
+    if (!list) return;
+
+    if (cookingRecipes.length === 0) {
+        list.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-illustration" style="font-size: 3rem; margin-bottom: 1rem;">🍳</div>
+                <h3>暂无菜谱</h3>
+                <p>快来记录你的第一道拿手菜吧！</p>
+            </div>
+        `;
+        return;
+    }
+
+    // Helper if escapeHtml not available, define simple one
+    const safe = (str) => {
+        if (typeof escapeHtml === 'function') return escapeHtml(str);
+        if (!str) return '';
+        return str.replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
+    };
+
+    list.innerHTML = cookingRecipes.map(recipe => `
+        <div class="cooking-recipe-card">
+            <div class="recipe-header">
+                <div class="recipe-title">
+                    <span class="recipe-icon">${safe(recipe.icon)}</span>
+                    <h4>${safe(recipe.name)}</h4>
+                </div>
+                <div class="recipe-actions">
+                    <button class="recipe-action-btn" onclick="editRecipe('${recipe.id}')" title="编辑">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="recipe-action-btn danger" onclick="deleteRecipe('${recipe.id}')" title="删除">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="recipe-tags">
+                ${recipe.tags.map(tag => `<span class="recipe-tag">${safe(tag)}</span>`).join('')}
+            </div>
+            
+            <div class="recipe-content-preview">
+                <strong>食材：</strong>${safe(recipe.ingredients).replace(/\n/g, '<br>')}<br>
+                <strong>做法：</strong>${safe(recipe.steps).replace(/\n/g, '<br>')}
+            </div>
+            
+            <div class="recipe-date">
+                记录于 ${recipe.updated}
+            </div>
+        </div>
+    `).join('');
+}
+
+// 编辑菜谱
+function editRecipe(id) {
+    const recipe = cookingRecipes.find(r => r.id === id);
+    if (!recipe) return;
+
+    const wrapper = document.getElementById('cookingRecipeFormWrapper');
+    
+    if (wrapper) {
+        wrapper.classList.remove('hidden');
+        document.getElementById('recipeFormTitle').textContent = '编辑菜谱';
+        const cancelBtn = document.getElementById('cancelRecipeEdit');
+        if(cancelBtn) cancelBtn.classList.remove('hidden');
+
+        document.getElementById('recipeIdField').value = recipe.id;
+        document.getElementById('recipeIcon').value = recipe.icon;
+        document.getElementById('recipeUpdated').value = recipe.updated;
+        document.getElementById('recipeName').value = recipe.name;
+        document.getElementById('recipeTags').value = recipe.tags.join(', ');
+        document.getElementById('recipeIngredients').value = recipe.ingredients;
+        document.getElementById('recipeSteps').value = recipe.steps;
+        
+        // 滚动到表单
+        wrapper.scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+// 删除菜谱
+async function deleteRecipe(id) {
+    if (confirm('确定要删除这个菜谱吗？')) {
+        cookingRecipes = cookingRecipes.filter(r => r.id !== id);
+        await saveCookingRecipes();
+        renderCookingRecipes();
+        if (typeof showMessage === 'function') {
+            showMessage('菜谱已删除', 'success');
+        }
+    }
+}
+
+// 初始化调用
+document.addEventListener('DOMContentLoaded', () => {
+    initCooking();
+    loadCookingRecipes();
+});
+

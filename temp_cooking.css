@@ -1,0 +1,319 @@
+/* Cooking Hub Styles */
+.btn-cooking {
+    background: linear-gradient(135deg, #fdba74 0%, #fb923c 100%);
+    color: #7c2d12;
+    box-shadow: 0 12px 30px rgba(251, 146, 60, 0.4);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border: none;
+}
+
+.btn-cooking:hover {
+    background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%);
+    color: #431407;
+    transform: translateY(-2px);
+}
+
+.cooking-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background: rgba(43, 20, 10, 0.35);
+    backdrop-filter: blur(6px);
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+    z-index: 2000;
+}
+
+.cooking-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+    visibility: visible;
+}
+
+.cooking-panel {
+    width: min(1080px, 96vw);
+    max-height: 90vh;
+    background: #fffaf5;
+    border-radius: 32px;
+    box-shadow: 0 25px 70px rgba(124, 45, 18, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+}
+
+.cooking-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem 2rem;
+    background: linear-gradient(120deg, #ffedd5 0%, #fed7aa 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+    gap: 1rem;
+}
+
+.cooking-panel-title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #7c2d12;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.cooking-panel-emoji {
+    font-size: 1.8rem;
+}
+
+.cooking-panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.cooking-close-btn {
+    border: none;
+    background: rgba(255, 255, 255, 0.65);
+    color: #7c2d12;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    font-size: 1rem;
+}
+
+.cooking-panel-body {
+    padding: 1.5rem 2rem;
+    overflow-y: auto;
+    background: radial-gradient(circle at top, #fff7ed, #fffaf5);
+    flex: 1;
+}
+
+.cooking-section {
+    margin-bottom: 2rem;
+}
+
+.cooking-section-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.cooking-section-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #9a3412;
+    margin-bottom: 0.25rem;
+}
+
+.cooking-section-header h3 {
+    margin: 0;
+    color: #7c2d12;
+    font-size: 1.35rem;
+}
+
+.cooking-form-wrapper {
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 24px;
+    border: 1px solid #ffedd5;
+    box-shadow: 0 12px 28px rgba(124, 45, 18, 0.08);
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+.cooking-form-wrapper.hidden {
+    display: none;
+}
+
+.cooking-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.cooking-form .form-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.9rem;
+    color: #7c2d12;
+}
+
+.cooking-form .form-row.two-cols {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.85rem;
+}
+
+.cooking-form input,
+.cooking-form textarea {
+    border: 1px solid #fed7aa;
+    border-radius: 14px;
+    padding: 0.55rem 0.9rem;
+    font-size: 0.95rem;
+    background: #fff7ed;
+}
+
+.cooking-form input:focus,
+.cooking-form textarea:focus {
+    outline: none;
+    border-color: #fb923c;
+    box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.25);
+}
+
+.cooking-recipe-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.25rem;
+}
+
+.cooking-recipe-card {
+    background: #ffffff;
+    border-radius: 24px;
+    padding: 1.5rem;
+    border: 1px solid #ffedd5;
+    box-shadow: 0 12px 30px rgba(124, 45, 18, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.cooking-recipe-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 35px rgba(124, 45, 18, 0.12);
+}
+
+.cooking-recipe-card::after {
+    content: '';
+    position: absolute;
+    right: -30px;
+    top: -30px;
+    width: 120px;
+    height: 120px;
+    background: rgba(253, 186, 116, 0.25);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.recipe-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.recipe-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.recipe-icon {
+    font-size: 1.25rem;
+}
+
+.recipe-header h4 {
+    margin: 0;
+    color: #7c2d12;
+    font-size: 1.1rem;
+}
+
+.recipe-actions {
+    display: inline-flex;
+    gap: 0.35rem;
+}
+
+.recipe-action-btn {
+    border: none;
+    background: rgba(255, 255, 255, 0.9);
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    color: #9a3412;
+    cursor: pointer;
+    box-shadow: 0 6px 14px rgba(124, 45, 18, 0.15);
+}
+
+.recipe-action-btn.danger {
+    color: #b91c1c;
+}
+
+.recipe-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.recipe-tag {
+    background: #ffedd5;
+    color: #9a3412;
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.recipe-content-preview {
+    font-size: 0.9rem;
+    color: #572e24;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    background: #fffaf5;
+    padding: 0.75rem;
+    border-radius: 12px;
+}
+
+.recipe-date {
+    font-size: 0.8rem;
+    color: #b37e6b;
+    margin-top: auto;
+    text-align: right;
+}
+
+@media (max-width: 768px) {
+    .cooking-overlay {
+        padding: 1rem;
+    }
+
+    .cooking-panel {
+        border-radius: 20px;
+        width: 100%;
+        max-height: 100vh;
+    }
+
+    .cooking-panel-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .cooking-panel-actions {
+        width: 100%;
+        justify-content: flex-end;
+        margin-top: -3rem; /* Move close button up */
+    }
+    
+    .cooking-recipe-list {
+        grid-template-columns: 1fr;
+    }
+}
+

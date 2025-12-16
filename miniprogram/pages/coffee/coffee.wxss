@@ -1,0 +1,381 @@
+/* pages/coffee/coffee.wxss */
+page {
+    height: 100vh;
+    background: #f6fbf2;
+    overflow: hidden;
+}
+
+.coffee-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header */
+.coffee-header {
+    background: linear-gradient(120deg, #bcd9af 0%, #e6f4d9 100%);
+    padding: 30rpx;
+    padding-top: calc(88rpx + 20rpx); /* Safe area for status bar if custom nav is used, but here standard nav bar might conflict. Assuming custom header logic or just standard padding */
+    padding-top: 30rpx; /* Revert to standard padding if using standard navigation bar */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+    flex-shrink: 0;
+}
+
+.header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20rpx;
+}
+
+.title {
+    font-size: 40rpx;
+    font-weight: 700;
+    color: #1f3b25;
+    display: flex;
+    align-items: center;
+    gap: 10rpx;
+}
+
+/* Optimized Close Button for Coffee Page */
+.close-btn {
+    width: 64rpx;
+    height: 64rpx;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 16rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36rpx;
+    color: #1d2c21;
+    font-weight: bold;
+    transition: all 0.2s;
+    backdrop-filter: blur(5px);
+}
+
+.close-btn:active {
+    background: rgba(255, 255, 255, 0.8);
+    transform: scale(0.95);
+}
+
+.tabs {
+    display: flex;
+    gap: 20rpx;
+    justify-content: flex-end;
+}
+
+.tab-btn {
+    background: rgba(255, 255, 255, 0.6);
+    color: #2c5b34;
+    padding: 12rpx 30rpx;
+    border-radius: 40rpx;
+    font-size: 26rpx;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10rpx;
+    border: none;
+    line-height: 1.5;
+}
+
+.tab-btn.active {
+    background: white;
+    box-shadow: 0 4rpx 10rpx rgba(68, 116, 80, 0.15);
+}
+
+/* Content Area */
+.coffee-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 30rpx;
+    background: radial-gradient(circle at top, #fdfdf8, #eff8ec);
+}
+
+/* Section Common */
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30rpx;
+}
+
+.section-titles h3 {
+    font-size: 36rpx;
+    font-weight: bold;
+    color: #1f3b25;
+    display: block;
+}
+
+.section-label {
+    font-size: 20rpx;
+    letter-spacing: 2rpx;
+    text-transform: uppercase;
+    color: #6c846b;
+    margin-bottom: 6rpx;
+    display: block;
+}
+
+.pill-btn {
+    background: rgba(255, 255, 255, 0.9);
+    color: #2f4f2f;
+    border-radius: 40rpx;
+    padding: 12rpx 24rpx;
+    font-size: 24rpx;
+    font-weight: 600;
+    box-shadow: 0 4rpx 10rpx rgba(62, 92, 65, 0.15);
+    display: flex;
+    align-items: center;
+    gap: 8rpx;
+}
+
+/* Methods List */
+.methods-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 30rpx;
+    padding-bottom: 100rpx;
+}
+
+.method-card {
+    background: white;
+    border-radius: 32rpx;
+    padding: 30rpx;
+    border: 1px solid #e2f2da;
+    box-shadow: 0 6rpx 20rpx rgba(27, 53, 34, 0.08);
+    position: relative;
+    overflow: hidden;
+}
+
+.method-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20rpx;
+}
+
+.method-title-row {
+    display: flex;
+    align-items: center;
+    gap: 16rpx;
+}
+
+.method-icon { font-size: 40rpx; }
+.method-name { font-size: 32rpx; font-weight: 600; color: #1f3d2e; }
+
+.method-actions {
+    display: flex;
+    gap: 16rpx;
+}
+
+.action-icon {
+    width: 60rpx;
+    height: 60rpx;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4rpx 10rpx rgba(0,0,0,0.05);
+    font-size: 30rpx;
+}
+
+.method-summary {
+    font-size: 28rpx;
+    color: #4c6250;
+    margin-bottom: 24rpx;
+}
+
+.method-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20rpx;
+    margin-bottom: 24rpx;
+}
+
+.metric-item {
+    background: #f4faef;
+    border-radius: 20rpx;
+    padding: 16rpx;
+    text-align: center;
+}
+
+.metric-label {
+    display: block;
+    font-size: 20rpx;
+    color: #7b907e;
+    margin-bottom: 6rpx;
+}
+
+.metric-value {
+    display: block;
+    font-size: 26rpx;
+    font-weight: bold;
+    color: #243726;
+}
+
+.method-rating {
+    display: flex;
+    gap: 4rpx;
+    color: #f59e0b;
+    font-size: 24rpx;
+}
+
+/* Journal Map */
+.map-container {
+    height: 400rpx;
+    width: 100%;
+    border-radius: 24rpx;
+    overflow: hidden;
+    margin-bottom: 30rpx;
+    border: 2rpx solid #d8ecd1;
+}
+
+.map {
+    width: 100%;
+    height: 100%;
+}
+
+.journal-list {
+    display: flex;
+    flex-direction: column;
+    gap: 30rpx;
+    padding-bottom: 100rpx;
+}
+
+.journal-card {
+    background: linear-gradient(135deg, #fffdf4 0%, #ecffe3 100%);
+    border-radius: 24rpx;
+    padding: 30rpx;
+    border: 1px solid rgba(152, 196, 143, 0.4);
+}
+
+.journal-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20rpx;
+}
+
+.shop-name {
+    font-size: 32rpx;
+    font-weight: bold;
+    color: #2b4b2c;
+    display: block;
+}
+
+.visit-date {
+    font-size: 24rpx;
+    color: #73826f;
+}
+
+.journal-photo {
+    width: 100%;
+    height: 360rpx;
+    border-radius: 16rpx;
+    margin-bottom: 20rpx;
+    background: #f7f9f4;
+    object-fit: cover;
+}
+
+.journal-meta {
+    font-size: 26rpx;
+    color: #4a5f46;
+    margin-bottom: 10rpx;
+}
+
+.journal-notes {
+    font-size: 26rpx;
+    color: #465041;
+    line-height: 1.5;
+    background: rgba(255,255,255,0.5);
+    padding: 16rpx;
+    border-radius: 12rpx;
+}
+
+/* Form Modal (reuses some styles but customized) */
+.form-container {
+    padding: 10rpx 0;
+}
+
+.form-group {
+    margin-bottom: 30rpx;
+}
+
+.label {
+    display: block;
+    margin-bottom: 12rpx;
+    font-size: 26rpx;
+    color: #506050;
+    font-weight: 500;
+}
+
+/* Uses Global input styles now, removing duplicates if any, but adding overrides if needed */
+.row {
+    display: flex;
+    gap: 20rpx;
+}
+
+.row .form-group {
+    flex: 1;
+}
+
+.metric-row {
+    display: flex;
+    gap: 16rpx;
+    margin-bottom: 16rpx;
+    align-items: center;
+}
+
+.remove-btn {
+    color: #ef4444;
+    padding: 10rpx;
+    font-size: 40rpx;
+}
+
+.add-metric-btn {
+    text-align: center;
+    padding: 20rpx;
+    border: 1px dashed #c5ddbb;
+    border-radius: 16rpx;
+    color: #4d6d4c;
+    font-size: 26rpx;
+    margin-bottom: 30rpx;
+}
+
+.location-picker {
+    display: flex;
+    gap: 10rpx;
+}
+
+.location-btn {
+    width: 88rpx;
+    height: 88rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #e6f4d9;
+    border-radius: 16rpx;
+    border: 1px solid #d2e7c7;
+    flex-shrink: 0;
+}
+
+/* Image Picker */
+.image-picker {
+    width: 100%;
+    height: 300rpx;
+    background: #f9fdf6;
+    border: 2px dashed #d2e7c7;
+    border-radius: 16rpx;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #7b907e;
+    font-size: 24rpx;
+    position: relative;
+    overflow: hidden;
+}
+
+.picked-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}

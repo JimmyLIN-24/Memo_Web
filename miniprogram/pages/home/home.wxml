@@ -1,0 +1,295 @@
+<!-- pages/home/home.wxml -->
+<view class="app-container">
+  <!-- Header -->
+  <view class="app-header {{headerHidden ? 'hidden' : ''}}">
+    <!-- Top Section -->
+    <view class="header-top {{headerTopHidden ? 'hidden' : ''}}">
+      <view class="header-left">
+        <view class="user-info">
+          <view class="user-avatar-small">👧🏻</view>
+          <view class="user-details">
+            <text class="user-name">小香香Grace</text>
+            <view class="user-status">
+              <text class="status-dot">●</text>
+              <text>在线</text>
+            </view>
+          </view>
+          <view class="home-btn" bindtap="goHome" title="返回主页">
+            <text class="fa fa-home">🏠</text>
+          </view>
+        </view>
+      </view>
+    </view>
+    
+    <!-- Middle Section -->
+    <view class="header-middle {{headerMiddleHidden ? 'hidden' : ''}}">
+      <view class="header-left">
+        <view class="app-title">
+          <text class="icon">📋</text>
+          <text>物品清单备忘录</text>
+        </view>
+      </view>
+    </view>
+    
+    <!-- Bottom Section -->
+    <view class="header-bottom">
+      <view class="header-actions">
+        <button class="btn btn-primary" bindtap="showAddItemModal">
+          <text class="icon">➕</text>
+          <text>添加物品</text>
+        </button>
+        <button class="btn btn-coffee" bindtap="showCoffeeHub">
+          <text class="icon">☕</text>
+          <text>咖啡角</text>
+        </button>
+        <!-- Christmas Tree Button Removed -->
+        <button class="btn btn-game" bindtap="showGameOverlay">
+          <text class="icon">🎮</text>
+          <text>Game</text>
+        </button>
+        <button class="btn btn-secondary" bindtap="showSettingsModal">
+          <text class="icon">⚙️</text>
+        </button>
+      </view>
+    </view>
+  </view>
+
+  <!-- Notifications -->
+  <view class="notifications-container" wx:if="{{notifications.length > 0}}">
+    <block wx:for="{{notifications}}" wx:key="id">
+      <view class="notification-item {{item.type}} {{item.expanded ? 'expanded' : ''}}" bindtap="toggleNotification" data-id="{{item.id}}">
+        <view class="notification-main">
+          <text class="notification-icon" wx:if="{{item.type === 'error'}}">⚠️</text>
+          <text class="notification-icon" wx:elif="{{item.type === 'warning'}}">⏳</text>
+          <text class="notification-icon" wx:else>ℹ️</text>
+          <view class="notification-content">
+            <text class="notification-title">{{item.title}}</text>
+          </view>
+          <view class="notification-close" catchtap="closeNotification" data-id="{{item.id}}">×</view>
+        </view>
+        <view class="notification-details" wx:if="{{item.expanded}}">
+          <text>{{item.message}}</text>
+        </view>
+      </view>
+    </block>
+  </view>
+
+  <view class="main-layout">
+    <!-- Sidebar -->
+    <scroll-view scroll-y class="sidebar">
+      <view class="sidebar-nav">
+        <!-- Summary -->
+        <view class="nav-section nav-summary">
+          <view class="nav-btn nav-summary-btn {{currentCategory === 'all-summary' ? 'active' : ''}}" bindtap="changeCategory" data-category="all-summary">
+            <view class="nav-icon-text">
+                <text class="icon">📊</text>
+                <text>全部物品汇总</text>
+            </view>
+            <view class="summary-stats">
+              <view class="summary-stat">
+                <text class="summary-label">总计</text>
+                <text class="summary-value">{{totalItems}}</text>
+              </view>
+              <view class="summary-stat alert">
+                <text class="summary-label">需关注</text>
+                <text class="summary-value">{{alertItems}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+        
+        <!-- Categories -->
+        <block wx:for="{{categories}}" wx:key="id">
+          <view class="nav-section">
+            <view class="nav-title">{{item.title}}</view>
+            <block wx:for="{{item.subcategories}}" wx:key="id" wx:for-item="sub">
+              <view class="nav-btn {{currentCategory === sub.id ? 'active' : ''}}" bindtap="changeCategory" data-category="{{sub.id}}">
+                <text class="icon">{{sub.icon}}</text>
+                <text>{{sub.name}}</text>
+              </view>
+            </block>
+          </view>
+        </block>
+      </view>
+    </scroll-view>
+
+    <!-- Main Content -->
+    <scroll-view scroll-y class="main-content">
+      <view class="category-content">
+        <view class="category-header">
+          <text class="h2">{{categoryTitle}}</text>
+          <view class="category-stats">
+            <view class="stat-item">
+              <text class="icon">📦</text>
+              <text>总计：{{currentCategoryTotal}}</text>
+            </view>
+            <view class="stat-item alert">
+              <text class="icon">⚠️</text>
+              <text>需要关注：{{currentCategoryAlert}}</text>
+            </view>
+          </view>
+        </view>
+        
+        <!-- Search -->
+        <view class="search-container">
+          <view class="search-input-wrapper">
+            <text class="search-icon">🔍</text>
+            <input type="text" id="searchInput" placeholder="搜索物品名称、存放地点..." value="{{searchQuery}}" bindinput="onSearchInput" />
+            <view class="search-clear" wx:if="{{searchQuery}}" bindtap="clearSearch">×</view>
+          </view>
+        </view>
+
+        <!-- Items Grid -->
+        <view class="items-grid" wx:if="{{filteredItems.length > 0}}">
+          <block wx:for="{{filteredItems}}" wx:key="id">
+            <view class="item-card {{item.isExpiring ? 'warning' : ''}} {{item.isExpired ? 'alert' : ''}} {{item.isLowStock ? 'alert' : ''}}" bindtap="onItemClick" data-id="{{item.id}}">
+              <!-- Status Badge -->
+               <view class="status-badge {{item.statusBadgeClass}}" wx:if="{{item.statusBadge}}">{{item.statusBadge}}</view>
+
+              <view class="item-header">
+                <text class="item-name">{{item.name}}</text>
+                <!-- Mobile Actions (always visible or toggleable) -->
+                <view class="quantity-controls">
+                    <view class="quantity-btn decrease" catchtap="updateQuantity" data-id="{{item.id}}" data-action="decrease">-</view>
+                    <view class="quantity-btn increase" catchtap="updateQuantity" data-id="{{item.id}}" data-action="increase">+</view>
+                </view>
+              </view>
+              
+              <view class="item-details">
+                <view class="item-detail">
+                  <view class="detail-left">
+                      <text class="icon">🔢</text>
+                      <text>数量</text>
+                  </view>
+                  <text class="item-quantity">{{item.quantity}} {{item.unit}}</text>
+                </view>
+                <view class="item-detail" wx:if="{{item.location}}">
+                   <view class="detail-left">
+                      <text class="icon">📍</text>
+                      <text>{{item.location}}</text>
+                   </view>
+                </view>
+                <view class="item-detail {{item.expiryClass}}" wx:if="{{item.expiryDate}}">
+                    <view class="detail-left">
+                      <text class="icon">📅</text>
+                      <text>{{item.expiryDateDisplay}}</text>
+                    </view>
+                </view>
+              </view>
+
+              <!-- Edit/Delete Actions (shown on click/tap in mobile usually, or specific button) -->
+              <view class="item-actions {{item.showActions ? 'mobile-visible' : ''}}">
+                  <view class="action-btn edit" catchtap="editItem" data-id="{{item.id}}">✏️</view>
+                  <view class="action-btn delete" catchtap="deleteItem" data-id="{{item.id}}">🗑️</view>
+              </view>
+            </view>
+          </block>
+        </view>
+
+        <!-- Empty State -->
+        <view class="empty-state" wx:else>
+          <view class="empty-illustration">📦</view>
+          <view class="h3">暂无物品</view>
+          <text>点击上方的"添加物品"按钮开始记录您的清单</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- Add/Edit Item Modal -->
+  <view class="modal-overlay {{showItemModal ? 'active' : ''}}">
+    <view class="modal-content">
+      <view class="modal-header modal-header-fixed">
+        <text class="h3">{{editingItemId ? '编辑物品' : '添加物品'}}</text>
+        <view class="modal-header-actions">
+           <button class="btn btn-primary" bindtap="saveItem">保存</button>
+           <view class="modal-close" bindtap="closeItemModal">×</view>
+        </view>
+      </view>
+      <scroll-view scroll-y class="modal-body">
+        <view class="modal-form">
+            <!-- Quick Select (Only for Add) -->
+            <view class="quick-select-section" wx:if="{{!editingItemId}}">
+                <view class="h4">快速选择常用物品</view>
+                <view class="quick-select-grid">
+                    <block wx:for="{{quickSelectItems}}" wx:key="name">
+                        <view class="quick-select-item {{selectedQuickItem === item.name ? 'selected' : ''}}" bindtap="selectQuickItem" data-item="{{item}}">
+                            {{item.name}}
+                        </view>
+                    </block>
+                </view>
+                <view class="quick-select-divider">
+                    <text>或手动输入</text>
+                </view>
+            </view>
+
+            <view class="form-group">
+                <text class="label">物品名称</text>
+                <input class="input" placeholder="请输入物品名称" value="{{formData.name}}" bindinput="onInputChange" data-field="name" />
+            </view>
+            <view class="form-row">
+                <view class="form-group">
+                    <text class="label">数量</text>
+                    <input class="input" type="number" placeholder="0" value="{{formData.quantity}}" bindinput="onInputChange" data-field="quantity" />
+                </view>
+                <view class="form-group">
+                    <text class="label">单位</text>
+                    <input class="input" placeholder="包/个/瓶" value="{{formData.unit}}" bindinput="onInputChange" data-field="unit" />
+                </view>
+            </view>
+             <view class="form-group">
+                <text class="label">保质期（可选）</text>
+                <picker mode="date" value="{{formData.expiryDate}}" bindchange="onDateChange">
+                    <view class="picker input">
+                        {{formData.expiryDate || '选择日期'}}
+                    </view>
+                </picker>
+            </view>
+             <view class="form-row">
+                <view class="form-group">
+                    <text class="label">库存预警</text>
+                    <input class="input" type="number" placeholder="默认0" value="{{formData.threshold}}" bindinput="onInputChange" data-field="threshold" />
+                </view>
+                <view class="form-group">
+                    <text class="label">过期提醒(天)</text>
+                    <input class="input" type="number" placeholder="默认0" value="{{formData.warningDays}}" bindinput="onInputChange" data-field="warningDays" />
+                </view>
+            </view>
+            <view class="form-group">
+                <text class="label">存放地点</text>
+                <input class="input" placeholder="例如：冰箱" value="{{formData.location}}" bindinput="onInputChange" data-field="location" />
+            </view>
+            <view class="form-group">
+                <text class="label">分类</text>
+                <picker mode="multiSelector" range="{{categoryRange}}" range-key="name" bindchange="onCategoryChange" bindcolumnchange="onCategoryColumnChange">
+                    <view class="picker input">
+                        {{categoryDisplay || '选择分类'}}
+                    </view>
+                </picker>
+            </view>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+
+  <!-- Settings Modal (Placeholder) -->
+  <view class="modal-overlay {{showSettingsModal ? 'active' : ''}}">
+      <view class="modal-content">
+          <view class="modal-header">
+              <text class="h3">设置</text>
+              <view class="modal-close" bindtap="closeSettingsModal">×</view>
+          </view>
+          <view class="settings-content">
+              <view class="setting-item">
+                  <switch checked="{{settings.enableNotifications}}" bindchange="toggleNotifications" />
+                  <text> 启用提醒通知</text>
+              </view>
+              <view class="setting-actions">
+                  <button class="btn btn-primary" bindtap="saveSettings">保存</button>
+              </view>
+          </view>
+      </view>
+  </view>
+
+  <!-- Coffee Hub & Game will be added later or as separate components -->
+</view>

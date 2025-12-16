@@ -60,6 +60,10 @@
                         <i class="fas fa-mug-hot"></i>
                         咖啡角
                     </button>
+                    <button class="btn btn-cooking" id="cookingBtn">
+                        <i class="fas fa-utensils"></i>
+                        美食厨房
+                    </button>
                     <button class="btn btn-christmas" id="christmasBtn" onclick="window.location.href='christmas_tree.html'">
                         <i class="fas fa-tree"></i>
                         圣诞树
@@ -629,6 +633,83 @@
                         <div class="cafe-visit-list" id="cafeVisitList">
                             <!-- Visits will be rendered by JS -->
                         </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cooking Hub -->
+    <div class="cooking-overlay" id="cookingOverlay">
+        <div class="cooking-panel">
+            <div class="cooking-panel-header">
+                <div class="cooking-panel-title">
+                    <span class="cooking-panel-emoji">🍳</span>
+                    美食厨房
+                </div>
+                <div class="cooking-panel-actions">
+                    <button class="cooking-close-btn" id="cookingCloseBtn" aria-label="关闭美食面板">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="cooking-panel-body">
+                <section class="cooking-section" id="cookingRecipesSection">
+                    <div class="cooking-section-header">
+                        <div>
+                            <p class="cooking-section-label">我的私房菜</p>
+                            <h3>美味食谱清单</h3>
+                        </div>
+                        <div class="cooking-section-actions">
+                            <button class="pill-btn" id="addRecipeBtn">
+                                <i class="fas fa-plus"></i>
+                                新增菜谱
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="cooking-form-wrapper hidden" id="cookingRecipeFormWrapper">
+                        <form class="cooking-form" id="cookingRecipeForm">
+                            <input type="hidden" id="recipeIdField">
+                            <div class="form-row form-row-header">
+                                <h4 id="recipeFormTitle">新增菜谱</h4>
+                                <button type="button" class="link-btn hidden" id="cancelRecipeEdit">取消编辑</button>
+                            </div>
+                            <div class="form-row two-cols">
+                                <div>
+                                    <label for="recipeIcon">小图标</label>
+                                    <input type="text" id="recipeIcon" maxlength="2" placeholder="🥘 / 🍜">
+                                </div>
+                                <div>
+                                    <label for="recipeUpdated">记录日期</label>
+                                    <input type="date" id="recipeUpdated">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <label for="recipeName">菜谱名称*</label>
+                                <input type="text" id="recipeName" required placeholder="例如：番茄炒蛋">
+                            </div>
+                            <div class="form-row">
+                                <label for="recipeTags">标签 (用逗号分隔)</label>
+                                <input type="text" id="recipeTags" placeholder="家常菜, 快手, 辣">
+                            </div>
+                            <div class="form-row">
+                                <label for="recipeIngredients">食材清单</label>
+                                <textarea id="recipeIngredients" rows="3" placeholder="鸡蛋 2个&#10;番茄 2个&#10;葱花 适量"></textarea>
+                            </div>
+                            <div class="form-row">
+                                <label for="recipeSteps">烹饪步骤</label>
+                                <textarea id="recipeSteps" rows="5" placeholder="1. 鸡蛋打散备用...&#10;2. 番茄切块...&#10;3. 热锅凉油..."></textarea>
+                            </div>
+                            <div class="form-row dual-actions">
+                                <button type="button" class="btn btn-secondary" id="recipeFormCancelBtn">收起</button>
+                                <button type="submit" class="btn btn-primary" id="recipeSubmitBtn">保存菜谱</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="cooking-recipe-list" id="cookingRecipeList">
+                        <!-- Recipes will be rendered by JS -->
                     </div>
                 </section>
             </div>
